@@ -39,18 +39,7 @@ CREATE POLICY "admin_tasks_all" ON tasks
   USING (auth_role() = 'admin' AND tenant_id = auth_tenant_id())
   WITH CHECK (auth_role() = 'admin' AND tenant_id = auth_tenant_id());
 
--- Client: SELECT only where task belongs to their linked client
-CREATE POLICY "client_tasks_select" ON tasks
-  FOR SELECT TO authenticated
-  USING (
-    auth_role() = 'client'
-    AND tenant_id = auth_tenant_id()
-    AND client_id IN (
-      SELECT c.id FROM clients c
-      JOIN client_portal_access a ON a.client_id = c.id
-      WHERE a.user_id = auth.uid()
-    )
-  );
+-- Client policies added in Phase 6 (requires client_portal_access table)
 
 -- ── task_attachments ─────────────────────────────────────────
 CREATE TABLE task_attachments (
@@ -75,17 +64,7 @@ CREATE POLICY "admin_attachments_all" ON task_attachments
   USING (auth_role() = 'admin' AND tenant_id = auth_tenant_id())
   WITH CHECK (auth_role() = 'admin' AND tenant_id = auth_tenant_id());
 
-CREATE POLICY "client_attachments_select" ON task_attachments
-  FOR SELECT TO authenticated
-  USING (
-    auth_role() = 'client'
-    AND tenant_id = auth_tenant_id()
-    AND task_id IN (
-      SELECT t.id FROM tasks t
-      JOIN client_portal_access a ON a.client_id = t.client_id
-      WHERE a.user_id = auth.uid()
-    )
-  );
+-- Client policies added in Phase 6 (requires client_portal_access table)
 
 -- ── comments ─────────────────────────────────────────────────
 CREATE TABLE comments (
@@ -113,34 +92,7 @@ CREATE POLICY "admin_comments_all" ON comments
   USING (auth_role() = 'admin' AND tenant_id = auth_tenant_id())
   WITH CHECK (auth_role() = 'admin' AND tenant_id = auth_tenant_id());
 
--- Client: SELECT all comments on their tasks
-CREATE POLICY "client_comments_select" ON comments
-  FOR SELECT TO authenticated
-  USING (
-    auth_role() = 'client'
-    AND tenant_id = auth_tenant_id()
-    AND task_id IN (
-      SELECT t.id FROM tasks t
-      JOIN client_portal_access a ON a.client_id = t.client_id
-      WHERE a.user_id = auth.uid()
-    )
-  );
-
--- Client: INSERT their own comments on their tasks
-CREATE POLICY "client_comments_insert" ON comments
-  FOR INSERT TO authenticated
-  WITH CHECK (
-    auth_role() = 'client'
-    AND tenant_id = auth_tenant_id()
-    AND author_id = auth.uid()
-    AND task_id IN (
-      SELECT t.id FROM tasks t
-      JOIN client_portal_access a ON a.client_id = t.client_id
-      WHERE a.user_id = auth.uid()
-    )
-  );
-
--- Client: UPDATE/DELETE their own comments
+-- Client: UPDATE/DELETE their own comments (no portal_access join needed)
 CREATE POLICY "client_comments_own" ON comments
   FOR ALL TO authenticated
   USING (
@@ -153,6 +105,8 @@ CREATE POLICY "client_comments_own" ON comments
     AND tenant_id = auth_tenant_id()
     AND author_id = auth.uid()
   );
+
+-- Client SELECT/INSERT policies that join client_portal_access added in Phase 6
 
 -- ── email_log ─────────────────────────────────────────────────
 CREATE TABLE email_log (
