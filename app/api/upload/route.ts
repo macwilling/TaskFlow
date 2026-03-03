@@ -2,15 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { createClient } from "@/lib/supabase/server";
 
-const s3 = new S3Client({
-  region: "auto",
-  endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-  credentials: {
-    accessKeyId: process.env.R2_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
-  },
-});
-
 const ALLOWED_MIME_TYPES = new Set([
   "image/jpeg",
   "image/png",
@@ -26,6 +17,20 @@ const ALLOWED_MIME_TYPES = new Set([
 
 const MAX_SIZE = 20 * 1024 * 1024; // 20 MB
 
+function getS3Client() {
+  const accountId = process.env.R2_ACCOUNT_ID;
+  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+
+  if (!accountId || !accessKeyId || !secretAccessKey) return null;
+
+  return new S3Client({
+    region: "auto",
+    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+    credentials: { accessKeyId, secretAccessKey },
+  });
+}
+
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
   const {
@@ -34,6 +39,14 @@ export async function POST(request: NextRequest) {
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const s3 = getS3Client();
+  if (!s3 || !process.env.R2_BUCKET_NAME || !process.env.R2_PUBLIC_URL) {
+    return NextResponse.json(
+      { error: "File storage is not configured. Set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, and R2_PUBLIC_URL in your environment." },
+      { status: 503 }
+    );
   }
 
   const uploadPath = request.nextUrl.searchParams.get("path");
@@ -61,15 +74,20 @@ export async function POST(request: NextRequest) {
 
   const buffer = await file.arrayBuffer();
 
-  await s3.send(
-    new PutObjectCommand({
-      Bucket: process.env.R2_BUCKET_NAME!,
-      Key: key,
-      Body: new Uint8Array(buffer),
-      ContentType: file.type,
-      ContentLength: file.size,
-    })
-  );
+  try {
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: process.env.R2_BUCKET_NAME,
+        Key: key,
+        Body: new Uint8Array(buffer),
+        ContentType: file.type,
+        ContentLength: file.size,
+      })
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Upload failed";
+    return NextResponse.json({ error: message }, { status: 502 });
+  }
 
   const url = `${process.env.R2_PUBLIC_URL}/${key}`;
   return NextResponse.json({ url, key });
