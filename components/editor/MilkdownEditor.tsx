@@ -4,6 +4,17 @@ import { useEffect, useRef } from "react";
 import { Crepe } from "@milkdown/crepe";
 import { cn } from "@/lib/utils";
 
+interface ToolbarConfig {
+  boldIcon?: string;
+  codeIcon?: string;
+  italicIcon?: string;
+  linkIcon?: string;
+  strikethroughIcon?: string;
+  latexIcon?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  buildToolbar?: (builder: any) => void;
+}
+
 interface MilkdownEditorProps {
   value: string;
   onChange?: (value: string) => void;
@@ -12,6 +23,7 @@ interface MilkdownEditorProps {
   readOnly?: boolean;
   minHeight?: string;
   className?: string;
+  toolbarConfig?: ToolbarConfig;
 }
 
 export function MilkdownEditor({
@@ -22,6 +34,7 @@ export function MilkdownEditor({
   readOnly = false,
   minHeight = "120px",
   className,
+  toolbarConfig,
 }: MilkdownEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const crepeRef = useRef<Crepe | null>(null);
@@ -36,6 +49,7 @@ export function MilkdownEditor({
       defaultValue: value,
       featureConfigs: {
         [Crepe.Feature.Placeholder]: { text: placeholder },
+        ...(toolbarConfig ? { [Crepe.Feature.Toolbar]: toolbarConfig } : {}),
         ...(uploadPath
           ? {
               [Crepe.Feature.ImageBlock]: {
