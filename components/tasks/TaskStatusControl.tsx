@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useOptimistic, useTransition } from "react";
 import { updateTaskStatusAction } from "@/app/actions/tasks";
 import { Button } from "@/components/ui/button";
 import { TaskStatusBadge } from "./TaskStatusBadge";
@@ -18,17 +18,19 @@ interface TaskStatusControlProps {
 
 export function TaskStatusControl({ taskId, currentStatus }: TaskStatusControlProps) {
   const [isPending, startTransition] = useTransition();
+  const [optimisticStatus, setOptimisticStatus] = useOptimistic(currentStatus);
 
   function setStatus(status: string) {
     startTransition(async () => {
+      setOptimisticStatus(status);
       await updateTaskStatusAction(taskId, status);
     });
   }
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      <TaskStatusBadge status={currentStatus} />
-      {STATUSES.filter((s) => s.value !== currentStatus && currentStatus !== "closed").map((s) => (
+      <TaskStatusBadge status={optimisticStatus} />
+      {STATUSES.filter((s) => s.value !== optimisticStatus && optimisticStatus !== "closed").map((s) => (
         <Button
           key={s.value}
           variant="outline"
@@ -40,7 +42,7 @@ export function TaskStatusControl({ taskId, currentStatus }: TaskStatusControlPr
           {s.label}
         </Button>
       ))}
-      {currentStatus === "closed" && (
+      {optimisticStatus === "closed" && (
         <Button
           variant="outline"
           size="sm"
