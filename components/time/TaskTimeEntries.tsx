@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { TimeEntryModal } from "@/components/time/TimeEntryModal";
+import { TimeEntryModal, TimeEntryData } from "@/components/time/TimeEntryModal";
 import { Button } from "@/components/ui/button";
 import { Plus, Clock } from "lucide-react";
 
@@ -46,11 +46,31 @@ export function TaskTimeEntries({
 }: TaskTimeEntriesProps) {
   const router = useRouter();
   const [modalOpen, setModalOpen] = useState(false);
+  const [editEntry, setEditEntry] = useState<TimeEntryData | undefined>(undefined);
 
   const totalHours = entries.reduce((sum, e) => sum + Number(e.duration_hours), 0);
 
   function handleSuccess() {
     router.refresh();
+  }
+
+  function handleOpenChange(open: boolean) {
+    setModalOpen(open);
+    if (!open) setEditEntry(undefined);
+  }
+
+  function handleRowClick(entry: TimeEntry) {
+    setEditEntry({
+      id: entry.id,
+      description: entry.description,
+      clientId,
+      taskId,
+      entryDate: entry.entry_date,
+      durationHours: Number(entry.duration_hours),
+      billable: entry.billable,
+      hourlyRate: entry.hourly_rate,
+    });
+    setModalOpen(true);
   }
 
   return (
@@ -82,7 +102,8 @@ export function TaskTimeEntries({
             return (
               <div
                 key={entry.id}
-                className="flex items-center justify-between px-3 py-2 text-sm"
+                className="flex items-center justify-between px-3 py-2 text-sm cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={() => handleRowClick(entry)}
               >
                 <div className="min-w-0">
                   <p className="truncate">{entry.description}</p>
@@ -111,12 +132,13 @@ export function TaskTimeEntries({
 
       <TimeEntryModal
         open={modalOpen}
-        onOpenChange={setModalOpen}
+        onOpenChange={handleOpenChange}
         onSuccess={handleSuccess}
         clients={clients}
         tasks={tasks}
         prefillClientId={clientId}
         prefillTaskId={taskId}
+        entry={editEntry}
       />
     </div>
   );
