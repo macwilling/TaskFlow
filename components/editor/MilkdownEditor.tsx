@@ -1,14 +1,7 @@
 "use client";
 
-import { useRef } from "react";
-import { Editor, rootCtx, defaultValueCtx, editorViewOptionsCtx } from "@milkdown/core";
-import { commonmark } from "@milkdown/preset-commonmark";
-import { history } from "@milkdown/plugin-history";
-import { listener, listenerCtx } from "@milkdown/plugin-listener";
-import { upload, uploadConfig } from "@milkdown/plugin-upload";
-import { Milkdown, MilkdownProvider, useEditor } from "@milkdown/react";
-import type { Schema, Node, Fragment } from "@milkdown/prose/model";
-import type { Ctx } from "@milkdown/ctx";
+import { useEffect, useRef } from "react";
+import { Crepe } from "@milkdown/crepe";
 import { cn } from "@/lib/utils";
 
 interface MilkdownEditorProps {
@@ -21,99 +14,81 @@ interface MilkdownEditorProps {
   className?: string;
 }
 
-function buildUploader(uploadPath: string) {
-  return async (
-    files: FileList,
-    schema: Schema,
-    _ctx: Ctx,
-    _insertPos: number
-  ): Promise<Node | Node[] | Fragment> => {
-    const nodes: Node[] = [];
-    for (const file of Array.from(files)) {
-      if (!file.type.startsWith("image/")) continue;
-      try {
-        const fd = new FormData();
-        fd.append("file", file);
-        const res = await fetch(`/api/upload?path=${encodeURIComponent(uploadPath)}`, {
-          method: "POST",
-          body: fd,
-        });
-        if (!res.ok) continue;
-        const { url } = (await res.json()) as { url: string };
-        const imageNode = schema.nodes["image"];
-        if (!imageNode) continue;
-        const node = imageNode.createAndFill({ src: url, alt: file.name });
-        if (node) nodes.push(node);
-      } catch {
-        // Skip failed uploads silently
-      }
-    }
-    return nodes;
-  };
-}
-
-function EditorInner({
+export function MilkdownEditor({
   value,
   onChange,
   uploadPath,
-  readOnly,
+  placeholder = "Start writing…",
+  readOnly = false,
+  minHeight = "120px",
+  className,
 }: MilkdownEditorProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const crepeRef = useRef<Crepe | null>(null);
   const latestOnChange = useRef(onChange);
   latestOnChange.current = onChange;
 
-  useEditor((root) => {
-    const editor = Editor.make()
-      .config((ctx) => {
-        ctx.set(rootCtx, root);
-        ctx.set(defaultValueCtx, value);
-        ctx.update(editorViewOptionsCtx, (prev) => ({
-          ...prev,
-          editable: () => !readOnly,
-        }));
+  useEffect(() => {
+    if (!containerRef.current) return;
 
-        if (onChange) {
-          ctx.get(listenerCtx).markdownUpdated((_, markdown) => {
-            latestOnChange.current?.(markdown);
-          });
-        }
+    const crepe = new Crepe({
+      root: containerRef.current,
+      defaultValue: value,
+      featureConfigs: {
+        [Crepe.Feature.Placeholder]: { text: placeholder },
+        ...(uploadPath
+          ? {
+              [Crepe.Feature.ImageBlock]: {
+                onUpload: async (file: File) => {
+                  const fd = new FormData();
+                  fd.append("file", file);
+                  const res = await fetch(
+                    `/api/upload?path=${encodeURIComponent(uploadPath)}`,
+                    { method: "POST", body: fd }
+                  );
+                  if (!res.ok) return "";
+                  const { url } = (await res.json()) as { url: string };
+                  return url;
+                },
+              },
+            }
+          : {}),
+      },
+    });
 
-        if (uploadPath) {
-          ctx.update(uploadConfig.key, (prev) => ({
-            ...prev,
-            uploader: buildUploader(uploadPath),
-          }));
-        }
-      })
-      .use(commonmark)
-      .use(history)
-      .use(listener);
+    crepe.on((api) => {
+      api.markdownUpdated((_ctx, markdown) => {
+        latestOnChange.current?.(markdown);
+      });
+    });
 
-    if (uploadPath) {
-      editor.use(upload);
-    }
+    crepe.create().then(() => {
+      crepe.setReadonly(readOnly);
+    });
 
-    return editor;
-  });
+    crepeRef.current = crepe;
 
-  return <Milkdown />;
-}
+    return () => {
+      crepe.destroy();
+      crepeRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-export function MilkdownEditor(props: MilkdownEditorProps) {
-  const { minHeight = "120px", className } = props;
+  useEffect(() => {
+    crepeRef.current?.setReadonly(readOnly);
+  }, [readOnly]);
 
   return (
     <div
+      ref={containerRef}
       className={cn(
-        "milkdown-wrapper rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
-        props.readOnly && "bg-muted/30",
+        "crepe-editor-wrapper rounded-md border border-input ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
+        readOnly && "read-only",
         className
       )}
       style={{ minHeight }}
-    >
-      <MilkdownProvider>
-        <EditorInner {...props} />
-      </MilkdownProvider>
-    </div>
+    />
   );
 }
 

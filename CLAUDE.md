@@ -80,7 +80,7 @@ const { pending } = useFormStatus(); // must be inside the <form> tree
 
 Actions return `{ error?: string }`. They call `revalidatePath()` then `redirect()` on success.
 
-### Milkdown editor
+### Milkdown Crepe editor
 
 `components/editor/MilkdownEditor.tsx` — always dynamically imported with `ssr: false`:
 
@@ -88,12 +88,11 @@ Actions return `{ error?: string }`. They call `revalidatePath()` then `redirect
 const MilkdownEditor = dynamic(() => import("@/components/editor/MilkdownEditor"), { ssr: false });
 ```
 
-The `MilkdownProvider` wraps `useEditor` inside the component itself — do not add another provider externally. Styles live in `app/globals.css` under `.milkdown-wrapper .ProseMirror`.
+Uses **`@milkdown/crepe`** (not the lower-level `@milkdown/core` / `@milkdown/react` API). Crepe is the all-in-one editor with slash commands (`/`), floating formatting toolbar, image blocks, and link tooltips built in.
 
-The upload plugin uploader signature is:
-```ts
-(files: FileList, schema: Schema, ctx: Ctx, insertPos: number) => Promise<Node | Node[] | Fragment>
-```
+The component uses `useEffect` + `useRef` to create/destroy the `Crepe` instance imperatively. Image upload is configured via `featureConfigs[Crepe.Feature.ImageBlock].onUpload`. `readOnly` changes are applied via a separate `useEffect` that calls `crepe.setReadonly()`.
+
+CSS is imported in `globals.css` (`@import "@milkdown/crepe/theme/common/style.css"` + `frame.css` at the top, before `@tailwind`). Crepe color tokens are overridden in `globals.css` under `.milkdown { --crepe-color-* }` to match our design-system variables — dark mode adapts automatically since our Tailwind vars change under `.dark { }`.
 
 ### File uploads (Cloudflare R2)
 
