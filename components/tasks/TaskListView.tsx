@@ -21,7 +21,7 @@ function taskHref(task: Task) {
 
 function formatDate(d: string | null) {
   if (!d) return "—";
-  return new Date(d).toLocaleDateString(undefined, {
+  return new Date(d).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
@@ -11,6 +12,149 @@ import { TaskEditors } from "@/components/tasks/TaskEditors";
 import { AttachmentsList } from "@/components/tasks/AttachmentsList";
 import { CommentThread } from "@/components/comments/CommentThread";
 import { TaskTimeEntries } from "@/components/time/TaskTimeEntries";
+
+function formatDate(d: string | null) {
+  if (!d) return "—";
+  return new Date(d).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+// ─── Deferred async panel wrappers ────────────────────────────────────────────
+
+async function AttachmentsPanel({
+  taskId,
+  tenantId,
+}: {
+  taskId: string;
+  tenantId: string;
+}) {
+  const supabase = await createClient();
+  const { data: attachments } = await supabase
+    .from("task_attachments")
+    .select("id, file_name, file_size, mime_type, public_url, created_at")
+    .eq("task_id", taskId)
+    .order("created_at", { ascending: true });
+
+  return (
+    <AttachmentsList
+      taskId={taskId}
+      tenantId={tenantId}
+      attachments={attachments ?? []}
+    />
+  );
+}
+
+async function TimeEntriesPanel({
+  taskId,
+  clientId,
+}: {
+  taskId: string;
+  clientId: string;
+}) {
+  const supabase = await createClient();
+  const [{ data: timeEntries }, { data: allClients }, { data: openTasks }] =
+    await Promise.all([
+      supabase
+        .from("time_entries")
+        .select("id, description, entry_date, duration_hours, billable, billed, hourly_rate")
+        .eq("task_id", taskId)
+        .order("entry_date", { ascending: false }),
+      supabase
+        .from("clients")
+        .select("id, name, color, default_rate")
+        .eq("is_archived", false)
+        .order("name"),
+      supabase
+        .from("tasks")
+        .select("id, title, client_id")
+        .not("status", "eq", "closed")
+        .order("title"),
+    ]);
+
+  return (
+    <TaskTimeEntries
+      taskId={taskId}
+      clientId={clientId}
+      clients={allClients ?? []}
+      tasks={openTasks ?? []}
+      entries={timeEntries ?? []}
+    />
+  );
+}
+
+async function CommentsPanel({
+  taskId,
+  currentUserId,
+}: {
+  taskId: string;
+  currentUserId: string;
+}) {
+  const supabase = await createClient();
+  const { data: comments } = await supabase
+    .from("comments")
+    .select("id, body, author_role, author_id, created_at")
+    .eq("task_id", taskId)
+    .order("created_at", { ascending: true });
+
+  return (
+    <CommentThread
+      taskId={taskId}
+      currentUserId={currentUserId}
+      comments={comments ?? []}
+    />
+  );
+}
+
+// ─── Skeleton fallbacks ────────────────────────────────────────────────────────
+
+function AttachmentsSkeleton() {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="h-2.5 w-24 rounded bg-muted animate-pulse" />
+        <div className="h-6 w-20 rounded bg-muted/40 animate-pulse" />
+      </div>
+      <div className="h-12 rounded-md border border-dashed border-border bg-muted/10 animate-pulse" />
+    </div>
+  );
+}
+
+function TimeEntriesSkeleton() {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="h-2.5 w-24 rounded bg-muted animate-pulse" />
+        <div className="h-6 w-24 rounded bg-muted/40 animate-pulse" />
+      </div>
+      <div className="h-20 rounded-md border border-dashed border-border bg-muted/10 animate-pulse" />
+    </div>
+  );
+}
+
+function CommentsSkeleton() {
+  return (
+    <div className="space-y-3">
+      <div className="h-2.5 w-20 rounded bg-muted animate-pulse" />
+      <div className="divide-y divide-border rounded-md border border-border">
+        {[1, 2].map((i) => (
+          <div key={i} className="flex gap-3 px-3 py-3">
+            <div className="h-7 w-7 shrink-0 rounded-full bg-muted animate-pulse" />
+            <div className="flex-1 space-y-1.5">
+              <div className="h-2.5 w-32 rounded bg-muted animate-pulse" />
+              <div className="h-3.5 w-full rounded bg-muted/60 animate-pulse" />
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="h-20 rounded-md border border-border bg-muted/10 animate-pulse" />
+    </div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function TaskDetailPage({
   params,
@@ -65,54 +209,10 @@ export default async function TaskDetailPage({
 
   const taskId = task.id as string;
   const tenantId = profile?.tenant_id ?? client?.tenant_id ?? "";
-
-  const [
-    { data: attachments },
-    { data: comments },
-    { data: timeEntries },
-    { data: allClients },
-    { data: openTasks },
-  ] = await Promise.all([
-    supabase
-      .from("task_attachments")
-      .select("id, file_name, file_size, mime_type, public_url, created_at")
-      .eq("task_id", taskId)
-      .order("created_at", { ascending: true }),
-    supabase
-      .from("comments")
-      .select("id, body, author_role, author_id, created_at")
-      .eq("task_id", taskId)
-      .order("created_at", { ascending: true }),
-    supabase
-      .from("time_entries")
-      .select("id, description, entry_date, duration_hours, billable, billed, hourly_rate")
-      .eq("task_id", taskId)
-      .order("entry_date", { ascending: false }),
-    supabase
-      .from("clients")
-      .select("id, name, color, default_rate")
-      .eq("is_archived", false)
-      .order("name"),
-    supabase
-      .from("tasks")
-      .select("id, title, client_id")
-      .not("status", "eq", "closed")
-      .order("title"),
-  ]);
-
   const isClosed = task.status === "closed";
   const displayKey = client?.client_key
     ? `${client.client_key}-${task.task_number}`
     : null;
-
-  function formatDate(d: string | null) {
-    if (!d) return "—";
-    return new Date(d).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  }
 
   return (
     <>
@@ -213,32 +313,24 @@ export default async function TaskDetailPage({
 
           <Separator />
 
-          {/* Attachments */}
-          <AttachmentsList
-            taskId={taskId}
-            tenantId={tenantId}
-            attachments={attachments ?? []}
-          />
+          {/* Attachments — streamed */}
+          <Suspense fallback={<AttachmentsSkeleton />}>
+            <AttachmentsPanel taskId={taskId} tenantId={tenantId} />
+          </Suspense>
 
           <Separator />
 
-          {/* Time entries */}
-          <TaskTimeEntries
-            taskId={taskId}
-            clientId={client?.id ?? ""}
-            clients={allClients ?? []}
-            tasks={openTasks ?? []}
-            entries={timeEntries ?? []}
-          />
+          {/* Time entries — streamed */}
+          <Suspense fallback={<TimeEntriesSkeleton />}>
+            <TimeEntriesPanel taskId={taskId} clientId={client?.id ?? ""} />
+          </Suspense>
 
           <Separator />
 
-          {/* Comments */}
-          <CommentThread
-            taskId={taskId}
-            currentUserId={user.id}
-            comments={comments ?? []}
-          />
+          {/* Comments — streamed */}
+          <Suspense fallback={<CommentsSkeleton />}>
+            <CommentsPanel taskId={taskId} currentUserId={user.id} />
+          </Suspense>
         </div>
       </PageContainer>
     </>
