@@ -68,6 +68,12 @@ export async function proxy(request: NextRequest) {
         new URL(`/portal/${tenantSlug}/login`, request.url)
       );
     }
+    // Redirect client to their own tenant if they navigate to another
+    const urlSlug = pathname.split("/")[2] ?? "";
+    const userSlug = user.app_metadata?.tenant_slug as string | undefined;
+    if (userSlug && userSlug !== urlSlug) {
+      return NextResponse.redirect(new URL(`/portal/${userSlug}`, request.url));
+    }
     return supabaseResponse;
   }
 

@@ -1,13 +1,103 @@
-export default function PortalDashboardPage({
+import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { TaskStatusBadge, TaskPriorityBadge } from "@/components/tasks/TaskStatusBadge";
+
+function formatDate(d: string | null) {
+  if (!d) return null;
+  return new Date(d).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+export default async function PortalDashboardPage({
   params,
 }: {
-  params: { tenantSlug: string };
+  params: Promise<{ tenantSlug: string }>;
 }) {
+  const { tenantSlug } = await params;
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // Get the client_id for this portal user
+  const { data: access } = await supabase
+    .from("client_portal_access")
+    .select("client_id")
+    .eq("user_id", user!.id)
+    .single();
+
+  const clientId = access?.client_id;
+
+  // Fetch tasks for this client (RLS client_tasks_select enforces access)
+  const { data: tasks } = clientId
+    ? await supabase
+        .from("tasks")
+        .select("id, title, status, priority, due_date, created_at")
+        .eq("client_id", clientId)
+        .order("created_at", { ascending: false })
+    : { data: [] };
+
+  // Fetch welcome message if no tasks
+  let welcomeMessage: string | null = null;
+  if (!tasks?.length) {
+    const admin = createAdminClient();
+    const tenantId = user!.app_metadata?.tenant_id as string | undefined;
+    if (tenantId) {
+      const { data: settings } = await admin
+        .from("tenant_settings")
+        .select("portal_welcome_message")
+        .eq("tenant_id", tenantId)
+        .single();
+      welcomeMessage = settings?.portal_welcome_message ?? null;
+    }
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <p className="text-sm text-muted-foreground">
-        Portal for <strong>{params.tenantSlug}</strong> — coming in Phase 6a.
-      </p>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-lg font-semibold">Your Tasks</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          View and track the tasks your consultant is working on.
+        </p>
+      </div>
+
+      {!tasks?.length ? (
+        <div className="rounded-md border border-dashed border-border p-8 text-center">
+          <p className="text-sm text-muted-foreground">
+            {welcomeMessage ?? "No tasks yet. Your consultant will add tasks here."}
+          </p>
+        </div>
+      ) : (
+        <div className="divide-y divide-border rounded-md border border-border">
+          {tasks.map((task) => (
+            <Link
+              key={task.id}
+              href={`/portal/${tenantSlug}/tasks/${task.id}`}
+              className="flex items-center gap-4 px-4 py-3 hover:bg-muted/40 transition-colors"
+            >
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground truncate">
+                  {task.title}
+                </p>
+                {task.due_date && (
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Due {formatDate(task.due_date)}
+                  </p>
+                )}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <TaskPriorityBadge priority={task.priority} />
+                <TaskStatusBadge status={task.status} />
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

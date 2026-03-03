@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { TopBar } from "@/components/layout/TopBar";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { ArchiveClientButton } from "@/components/clients/ArchiveClientButton";
+import { PortalAccessSection } from "@/components/portal/PortalAccessSection";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -27,11 +28,14 @@ export default async function ClientDetailPage({
   const { clientId } = await params;
   const supabase = await createClient();
 
-  const { data: client, error } = await supabase
-    .from("clients")
-    .select("*")
-    .eq("id", clientId)
-    .single();
+  const [{ data: client, error }, { data: portalAccess }] = await Promise.all([
+    supabase.from("clients").select("*").eq("id", clientId).single(),
+    supabase
+      .from("client_portal_access")
+      .select("accepted_at")
+      .eq("client_id", clientId)
+      .maybeSingle(),
+  ]);
 
   if (error || !client) notFound();
 
@@ -132,6 +136,16 @@ export default async function ClientDetailPage({
               </div>
             </>
           )}
+
+          <Separator />
+
+          {/* Client portal access */}
+          <PortalAccessSection
+            clientId={client.id}
+            clientEmail={client.email}
+            hasAccess={!!portalAccess}
+            acceptedAt={portalAccess?.accepted_at ?? null}
+          />
 
           <Separator />
 
