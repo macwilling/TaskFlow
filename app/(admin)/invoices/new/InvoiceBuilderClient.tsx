@@ -125,8 +125,8 @@ export function InvoiceBuilderClient({
   const [issueDate, setIssueDate] = useState(initialData?.issueDate ?? today);
   const [dueDate, setDueDate] = useState(initialData?.dueDate ?? defaultDue);
   const [memo, setMemo] = useState(initialData?.memo ?? "");
-  const [discountType, setDiscountType] = useState<"flat" | "percent" | "">(
-    (initialData?.discountType as "flat" | "percent" | "") ?? ""
+  const [discountType, setDiscountType] = useState<"flat" | "percent" | "none">(
+    (initialData?.discountType as "flat" | "percent") || "none"
   );
   const [discountValue, setDiscountValue] = useState(initialData?.discountValue ?? 0);
   const [taxRate, setTaxRate] = useState(initialData?.taxRate ?? defaultTaxRate);
@@ -435,18 +435,18 @@ export function InvoiceBuilderClient({
             <span className="text-xs text-muted-foreground flex-1">Discount</span>
             <Select
               value={discountType}
-              onValueChange={(v) => setDiscountType(v as "flat" | "percent" | "")}
+              onValueChange={(v) => setDiscountType(v as "flat" | "percent" | "none")}
             >
               <SelectTrigger className="h-6 w-20 text-xs">
                 <SelectValue placeholder="None" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="" className="text-xs">None</SelectItem>
+                <SelectItem value="none" className="text-xs">None</SelectItem>
                 <SelectItem value="flat" className="text-xs">$</SelectItem>
                 <SelectItem value="percent" className="text-xs">%</SelectItem>
               </SelectContent>
             </Select>
-            {discountType && (
+            {discountType !== "none" && (
               <Input
                 type="number"
                 min="0"
@@ -456,7 +456,7 @@ export function InvoiceBuilderClient({
                 className="h-6 w-20 text-xs text-right"
               />
             )}
-            {discountType && (
+            {discountType !== "none" && (
               <span className="text-xs tabular-nums w-20 text-right">
                 -{formatCurrency(discountAmount)}
               </span>
@@ -504,7 +504,7 @@ export function InvoiceBuilderClient({
 
       {/* Hidden fields */}
       <input type="hidden" name="line_items" value={lineItemsJson} />
-      <input type="hidden" name="discount_type" value={discountType} />
+      <input type="hidden" name="discount_type" value={discountType === "none" ? "" : discountType} />
       <input type="hidden" name="discount_value" value={discountValue} />
       <input type="hidden" name="tax_rate" value={taxRate} />
 
