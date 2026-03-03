@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,10 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Zap } from "lucide-react";
 
-export default function RegisterPage() {
+export default function UpdatePasswordPage() {
   const router = useRouter();
-  const [businessName, setBusinessName] = useState("");
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -29,52 +26,30 @@ export default function RegisterPage() {
     }
 
     setLoading(true);
-
-    // Create the tenant + profile via server-side API route (uses service role)
-    const res = await fetch("/api/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ businessName, email, password }),
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      setError(data.error ?? "Registration failed.");
-      setLoading(false);
-      return;
-    }
-
-    // Sign in with the newly created credentials
     const supabase = createClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { error } = await supabase.auth.updateUser({ password });
 
-    if (signInError) {
-      setError(signInError.message);
+    if (error) {
+      setError(error.message);
       setLoading(false);
       return;
     }
 
     router.push("/dashboard");
-    router.refresh();
   }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm space-y-6">
-        {/* Logo */}
         <div className="flex items-center gap-2">
           <Zap className="h-5 w-5 text-primary" strokeWidth={2.5} />
           <span className="text-sm font-semibold">TaskFlow</span>
         </div>
 
         <div className="space-y-1">
-          <h1 className="text-xl font-semibold tracking-tight">Create your account</h1>
+          <h1 className="text-xl font-semibold tracking-tight">Set new password</h1>
           <p className="text-sm text-muted-foreground">
-            Set up your consulting workspace.
+            Choose a new password for your account.
           </p>
         </div>
 
@@ -86,32 +61,7 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="businessName">Business name</Label>
-            <Input
-              id="businessName"
-              type="text"
-              required
-              value={businessName}
-              onChange={(e) => setBusinessName(e.target.value)}
-              placeholder="Mac Willingham Consulting"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">New password</Label>
             <Input
               id="password"
               type="password"
@@ -125,7 +75,7 @@ export default function RegisterPage() {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="confirmPassword">Confirm password</Label>
+            <Label htmlFor="confirmPassword">Confirm new password</Label>
             <Input
               id="confirmPassword"
               type="password"
@@ -138,16 +88,9 @@ export default function RegisterPage() {
           </div>
 
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Creating account…" : "Create account"}
+            {loading ? "Updating…" : "Update password"}
           </Button>
         </form>
-
-        <p className="text-center text-sm text-muted-foreground">
-          Already have an account?{" "}
-          <Link href="/auth/login" className="text-foreground hover:underline">
-            Sign in
-          </Link>
-        </p>
       </div>
     </div>
   );
