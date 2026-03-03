@@ -2,6 +2,23 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+async function getTaskSlug(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: SupabaseClient<any>,
+  taskId: string
+): Promise<string> {
+  const { data } = await supabase
+    .from("tasks")
+    .select("task_number, clients(client_key)")
+    .eq("id", taskId)
+    .single();
+  if (!data) return taskId;
+  const c = data.clients as unknown as { client_key: string | null } | null;
+  if (!c?.client_key || data.task_number == null) return taskId;
+  return `${c.client_key}-${data.task_number}`;
+}
 
 interface TimeEntryInput {
   client_id: string;
@@ -53,7 +70,10 @@ export async function createTimeEntryAction(
   if (error) return { error: error.message };
 
   revalidatePath("/time");
-  if (input.task_id) revalidatePath(`/tasks/${input.task_id}`);
+  if (input.task_id) {
+    const slug = await getTaskSlug(supabase, input.task_id);
+    revalidatePath(`/tasks/${slug}`);
+  }
   return { id: data.id };
 }
 
@@ -88,7 +108,10 @@ export async function updateTimeEntryAction(
   if (error) return { error: error.message };
 
   revalidatePath("/time");
-  if (input.task_id) revalidatePath(`/tasks/${input.task_id}`);
+  if (input.task_id) {
+    const slug = await getTaskSlug(supabase, input.task_id);
+    revalidatePath(`/tasks/${slug}`);
+  }
   return {};
 }
 
@@ -138,6 +161,9 @@ export async function deleteTimeEntryAction(
   if (error) return { error: error.message };
 
   revalidatePath("/time");
-  if (taskId) revalidatePath(`/tasks/${taskId}`);
+  if (taskId) {
+    const slug = await getTaskSlug(supabase, taskId);
+    revalidatePath(`/tasks/${slug}`);
+  }
   return {};
 }

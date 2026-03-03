@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 
 interface ClientFields {
   name: string;
+  client_key: string;
   company: string;
   email: string;
   phone: string;
@@ -22,9 +23,21 @@ interface ClientFields {
   billing_country: string;
 }
 
+const CLIENT_KEY_RE = /^[A-Z0-9]{2,10}$/;
+
+function validateClientKey(key: string): string | null {
+  const normalized = key.trim().toUpperCase();
+  if (!normalized) return "Client key is required.";
+  if (!CLIENT_KEY_RE.test(normalized)) {
+    return "Client key must be 2–10 uppercase letters or digits (e.g. AC, ACME).";
+  }
+  return null;
+}
+
 function buildClientPayload(fields: ClientFields) {
   return {
     name: fields.name.trim(),
+    client_key: fields.client_key.trim().toUpperCase() || null,
     company: fields.company.trim() || null,
     email: fields.email.trim() || null,
     phone: fields.phone.trim() || null,
@@ -66,7 +79,7 @@ export async function createClientAction(
   if (!profile) return { error: "Profile not found." };
 
   const keys = [
-    "name", "company", "email", "phone", "default_rate", "payment_terms",
+    "name", "client_key", "company", "email", "phone", "default_rate", "payment_terms",
     "currency", "color", "notes", "billing_line1", "billing_line2",
     "billing_city", "billing_state", "billing_postal_code", "billing_country",
   ] as const;
@@ -75,6 +88,9 @@ export async function createClientAction(
   ) as unknown as ClientFields;
 
   if (!fields.name.trim()) return { error: "Client name is required." };
+
+  const keyError = validateClientKey(fields.client_key);
+  if (keyError) return { error: keyError };
 
   const { data, error } = await supabase
     .from("clients")
@@ -103,7 +119,7 @@ export async function updateClientAction(
   }
 
   const keys = [
-    "name", "company", "email", "phone", "default_rate", "payment_terms",
+    "name", "client_key", "company", "email", "phone", "default_rate", "payment_terms",
     "currency", "color", "notes", "billing_line1", "billing_line2",
     "billing_city", "billing_state", "billing_postal_code", "billing_country",
   ] as const;
@@ -112,6 +128,11 @@ export async function updateClientAction(
   ) as unknown as ClientFields;
 
   if (!fields.name.trim()) return { error: "Client name is required." };
+
+  if (fields.client_key.trim()) {
+    const keyError = validateClientKey(fields.client_key);
+    if (keyError) return { error: keyError };
+  }
 
   const { error } = await supabase
     .from("clients")

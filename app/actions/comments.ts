@@ -2,6 +2,23 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+async function getTaskSlug(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: SupabaseClient<any>,
+  taskId: string
+): Promise<string> {
+  const { data } = await supabase
+    .from("tasks")
+    .select("task_number, clients(client_key)")
+    .eq("id", taskId)
+    .single();
+  if (!data) return taskId;
+  const c = data.clients as unknown as { client_key: string | null } | null;
+  if (!c?.client_key || data.task_number == null) return taskId;
+  return `${c.client_key}-${data.task_number}`;
+}
 
 export async function createCommentAction(
   taskId: string,
@@ -36,7 +53,8 @@ export async function createCommentAction(
 
   if (error) return { error: error.message };
 
-  revalidatePath(`/tasks/${taskId}`);
+  const slug = await getTaskSlug(supabase, taskId);
+  revalidatePath(`/tasks/${slug}`);
   return {};
 }
 
@@ -59,6 +77,7 @@ export async function deleteCommentAction(
 
   if (error) return { error: error.message };
 
-  revalidatePath(`/tasks/${taskId}`);
+  const slug = await getTaskSlug(supabase, taskId);
+  revalidatePath(`/tasks/${slug}`);
   return {};
 }

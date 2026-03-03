@@ -4,12 +4,19 @@ import { TaskStatusBadge, TaskPriorityBadge } from "./TaskStatusBadge";
 
 interface Task {
   id: string;
+  task_number: number | null;
   title: string;
   status: string;
   priority: string;
   due_date: string | null;
   created_at: string;
-  clients: { name: string; color: string | null } | null;
+  clients: { name: string; color: string | null; client_key: string | null } | null;
+}
+
+function taskHref(task: Task) {
+  const key = task.clients?.client_key;
+  if (key && task.task_number != null) return `/tasks/${key}-${task.task_number}`;
+  return `/tasks/${task.id}`;
 }
 
 function formatDate(d: string | null) {
@@ -43,6 +50,7 @@ export function TaskListView({ tasks }: { tasks: Task[] }) {
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-border bg-muted/40">
+            <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground w-20">ID</th>
             <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Title</th>
             <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Client</th>
             <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Status</th>
@@ -55,8 +63,17 @@ export function TaskListView({ tasks }: { tasks: Task[] }) {
           {tasks.map((task) => (
             <tr key={task.id} className="group hover:bg-muted/30 transition-colors">
               <td className="px-4 py-3">
+                {task.clients?.client_key && task.task_number != null ? (
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {task.clients.client_key}-{task.task_number}
+                  </span>
+                ) : (
+                  <span className="text-xs text-muted-foreground">—</span>
+                )}
+              </td>
+              <td className="px-4 py-3">
                 <Link
-                  href={`/tasks/${task.id}`}
+                  href={taskHref(task)}
                   className="font-medium text-foreground hover:underline"
                 >
                   {task.title}
@@ -83,7 +100,7 @@ export function TaskListView({ tasks }: { tasks: Task[] }) {
                 {formatDate(task.due_date)}
               </td>
               <td className="pr-3">
-                <Link href={`/tasks/${task.id}`}>
+                <Link href={taskHref(task)}>
                   <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                 </Link>
               </td>
