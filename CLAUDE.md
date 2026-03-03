@@ -59,7 +59,7 @@ Every business table has `tenant_id`. RLS policies use two `SECURITY DEFINER` he
 
 **Migration ordering matters**: `profiles` table must exist before these functions. Functions must exist before policies that call them. See `supabase/migrations/20260303000000_initial_schema.sql` for the canonical order.
 
-Client portal RLS policies that join `client_portal_access` are intentionally deferred to Phase 6 — that table doesn't exist yet.
+Client portal RLS policies that join `client_portal_access` are deferred to Phase 6 — that table and migration (`20260303000006_client_portal.sql`) will be created then.
 
 ### Supabase join typing
 
@@ -145,7 +145,7 @@ ALLOW_REGISTRATION             # "true" to allow /auth/register
 
 ## Implementation status
 
-Phases 0–4 complete. Phase 5 (Invoicing + React-PDF) is next.
+Phases 0–5 complete. Phase 6a (Client portal) is next.
 
 | Phase | Description | Status |
 |---|---|---|
@@ -154,7 +154,7 @@ Phases 0–4 complete. Phase 5 (Invoicing + React-PDF) is next.
 | 2 | Client management | ✅ Done |
 | 3 | Task management + Milkdown + R2 | ✅ Done |
 | 4 | Time tracking + FullCalendar | ✅ Done |
-| 5 | Invoicing + React-PDF | Pending |
+| 5 | Invoicing + React-PDF | ✅ Done |
 | 6a–6c | Client portal | Pending |
 | 7 | Settings + Reports | Pending |
 | 8 | Polish + hardening | Pending |
