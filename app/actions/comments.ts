@@ -43,18 +43,34 @@ export async function createCommentAction(
   const body = (formData.get("body") as string)?.trim();
   if (!body) return { error: "Comment cannot be empty." };
 
-  const { error } = await supabase.from("comments").insert({
-    tenant_id: profile.tenant_id,
-    task_id: taskId,
-    author_id: user.id,
-    author_role: profile.role,
-    body,
-  });
+  const { data: inserted, error } = await supabase
+    .from("comments")
+    .insert({
+      tenant_id: profile.tenant_id,
+      task_id: taskId,
+      author_id: user.id,
+      author_role: profile.role,
+      body,
+    })
+    .select("id")
+    .single();
 
   if (error) return { error: error.message };
 
   const slug = await getTaskSlug(supabase, taskId);
   revalidatePath(`/tasks/${slug}`);
+
+  const tenantSlug = user.app_metadata?.tenant_slug as string | undefined;
+  if (tenantSlug) revalidatePath(`/portal/${tenantSlug}/tasks/${taskId}`);
+
+  if (profile.role === "client" && inserted?.id) {
+    fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/email/comment`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ commentId: inserted.id }),
+    }).catch(() => {});
+  }
+
   return {};
 }
 
@@ -79,5 +95,9 @@ export async function deleteCommentAction(
 
   const slug = await getTaskSlug(supabase, taskId);
   revalidatePath(`/tasks/${slug}`);
+
+  const tenantSlug = user.app_metadata?.tenant_slug as string | undefined;
+  if (tenantSlug) revalidatePath(`/portal/${tenantSlug}/tasks/${taskId}`);
+
   return {};
 }

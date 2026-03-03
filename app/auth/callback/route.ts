@@ -41,13 +41,60 @@ export async function GET(request: NextRequest) {
   // Check whether this user already has a profile (returning user)
   const { data: existingProfile } = await supabase
     .from("profiles")
-    .select("id")
+    .select("id, role")
     .eq("id", user.id)
     .single();
 
   if (existingProfile) {
-    // Returning user — proceed normally
+    // Returning user — redirect based on role
+    if (existingProfile.role === "client") {
+      const tenantSlug = user.app_metadata?.tenant_slug as string | undefined;
+      if (tenantSlug) return NextResponse.redirect(`${origin}/portal/${tenantSlug}`);
+      return NextResponse.redirect(`${origin}/auth/login?error=auth_callback_error`);
+    }
     return NextResponse.redirect(`${origin}${next}`);
+  }
+
+  // ── Client invite acceptance ──────────────────────────────────────────────
+  if (user.user_metadata?.role === "client") {
+    const tenantId = user.user_metadata.tenant_id as string;
+    const clientId = user.user_metadata.client_id as string;
+    if (!tenantId || !clientId) {
+      await supabase.auth.signOut();
+      return NextResponse.redirect(`${origin}/auth/login?error=auth_callback_error`);
+    }
+    const admin = createAdminClient();
+    const { data: tenant } = await admin
+      .from("tenants")
+      .select("slug")
+      .eq("id", tenantId)
+      .single();
+    if (!tenant) {
+      await supabase.auth.signOut();
+      return NextResponse.redirect(`${origin}/auth/login?error=auth_callback_error`);
+    }
+    await admin.from("profiles").insert({
+      id: user.id,
+      tenant_id: tenantId,
+      role: "client",
+      full_name:
+        user.user_metadata.full_name ?? user.email?.split("@")[0] ?? "Client",
+    });
+    await admin.from("client_portal_access").insert({
+      tenant_id: tenantId,
+      client_id: clientId,
+      user_id: user.id,
+      invited_at: new Date().toISOString(),
+      accepted_at: new Date().toISOString(),
+    });
+    await admin.auth.admin.updateUserById(user.id, {
+      app_metadata: {
+        role: "client",
+        tenant_id: tenantId,
+        tenant_slug: tenant.slug,
+      },
+    });
+    return NextResponse.redirect(`${origin}/portal/${tenant.slug}`);
   }
 
   // ── First-time OAuth sign-in ──────────────────────────────────────────────
