@@ -109,9 +109,12 @@
   border-radius: inherit;
 }
 
-/* Give the ProseMirror content area some breathing room */
+/* Give the ProseMirror content area breathing room.
+   The 3.5rem left padding doubles as a gutter for the block drag-handle,
+   which is position:absolute and extends ~66px to the left of the content.
+   Without it the handle slides behind the fixed left nav (w-56 = 224px). */
 .milkdown .ProseMirror {
-  padding: 0.5rem 0.75rem;
+  padding: 0.5rem 0.75rem 0.5rem 3.5rem;
   min-height: inherit;
 }
 
