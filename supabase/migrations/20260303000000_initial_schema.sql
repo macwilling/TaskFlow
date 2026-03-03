@@ -3,10 +3,54 @@
 -- Run this in Supabase Dashboard → SQL Editor
 -- ============================================================
 
+-- ── updated_at trigger ────────────────────────────────────────
+
+CREATE OR REPLACE FUNCTION set_updated_at()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$;
+
+-- ── tenants ──────────────────────────────────────────────────
+
+CREATE TABLE tenants (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug       TEXT NOT NULL UNIQUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE tenants ENABLE ROW LEVEL SECURITY;
+-- No direct client access — all operations via service role.
+
+-- ── profiles ─────────────────────────────────────────────────
+-- Created before tenant_settings so helper functions can reference it.
+
+CREATE TABLE profiles (
+  id          UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  tenant_id   UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  role        TEXT NOT NULL CHECK (role IN ('admin', 'client')),
+  full_name   TEXT,
+  avatar_url  TEXT,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX profiles_tenant_id_idx ON profiles(tenant_id);
+
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+
+CREATE TRIGGER profiles_updated_at
+  BEFORE UPDATE ON profiles
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
 -- ── Helper functions ─────────────────────────────────────────
--- These are used in all RLS policies. SECURITY DEFINER means
--- they run as the function owner (postgres) and bypass RLS,
--- allowing them to safely read the profiles table.
+-- Defined after profiles exists. SECURITY DEFINER means they run
+-- as the function owner (postgres) and bypass RLS, allowing them
+-- to safely read profiles for any authenticated user.
 
 CREATE OR REPLACE FUNCTION auth_tenant_id()
 RETURNS UUID
@@ -28,16 +72,25 @@ AS $$
   SELECT role FROM profiles WHERE id = auth.uid();
 $$;
 
--- ── tenants ──────────────────────────────────────────────────
+-- ── profiles RLS ─────────────────────────────────────────────
+-- Defined after helper functions exist.
 
-CREATE TABLE tenants (
-  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  slug       TEXT NOT NULL UNIQUE,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+-- Admin: can read all profiles in their tenant
+CREATE POLICY "profiles: admin read all in tenant"
+  ON profiles
+  FOR SELECT
+  TO authenticated
+  USING (
+    tenant_id = auth_tenant_id()
+    AND auth_role() = 'admin'
+  );
 
-ALTER TABLE tenants ENABLE ROW LEVEL SECURITY;
--- No direct client access — all operations via service role.
+-- Client: can read only their own profile
+CREATE POLICY "profiles: client read own"
+  ON profiles
+  FOR SELECT
+  TO authenticated
+  USING (id = auth.uid());
 
 -- ── tenant_settings ──────────────────────────────────────────
 
@@ -80,6 +133,10 @@ CREATE TABLE tenant_settings (
 
 ALTER TABLE tenant_settings ENABLE ROW LEVEL SECURITY;
 
+CREATE TRIGGER tenant_settings_updated_at
+  BEFORE UPDATE ON tenant_settings
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
 -- Admin: full access to their own tenant's settings
 CREATE POLICY "tenant_settings: admin full access"
   ON tenant_settings
@@ -93,56 +150,3 @@ CREATE POLICY "tenant_settings: admin full access"
     tenant_id = auth_tenant_id()
     AND auth_role() = 'admin'
   );
-
--- ── profiles ─────────────────────────────────────────────────
-
-CREATE TABLE profiles (
-  id          UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  tenant_id   UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-  role        TEXT NOT NULL CHECK (role IN ('admin', 'client')),
-  full_name   TEXT,
-  avatar_url  TEXT,
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX profiles_tenant_id_idx ON profiles(tenant_id);
-
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
-
--- Admin: can read all profiles in their tenant
-CREATE POLICY "profiles: admin read all in tenant"
-  ON profiles
-  FOR SELECT
-  TO authenticated
-  USING (
-    tenant_id = auth_tenant_id()
-    AND auth_role() = 'admin'
-  );
-
--- Client: can read only their own profile
-CREATE POLICY "profiles: client read own"
-  ON profiles
-  FOR SELECT
-  TO authenticated
-  USING (id = auth.uid());
-
--- ── updated_at trigger ────────────────────────────────────────
-
-CREATE OR REPLACE FUNCTION set_updated_at()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-AS $$
-BEGIN
-  NEW.updated_at = now();
-  RETURN NEW;
-END;
-$$;
-
-CREATE TRIGGER tenant_settings_updated_at
-  BEFORE UPDATE ON tenant_settings
-  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-
-CREATE TRIGGER profiles_updated_at
-  BEFORE UPDATE ON profiles
-  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
