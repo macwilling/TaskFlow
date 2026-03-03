@@ -3,6 +3,31 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/**
+ * Returns the human-readable task key (e.g. "AC-1") for a given task UUID.
+ * Used by server actions to build the correct revalidatePath argument.
+ * Falls back to the raw UUID on any error so revalidation still runs.
+ */
+async function getTaskSlug(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: SupabaseClient<any>,
+  taskId: string
+): Promise<string> {
+  const { data } = await supabase
+    .from("tasks")
+    .select("task_number, clients(client_key)")
+    .eq("id", taskId)
+    .single();
+
+  if (!data) return taskId;
+  const c = data.clients as unknown as { client_key: string | null } | null;
+  if (!c?.client_key || data.task_number == null) return taskId;
+  return `${c.client_key}-${data.task_number}`;
+}
 
 // ─── Create ──────────────────────────────────────────────────────────────────
 
@@ -36,6 +61,12 @@ export async function createTaskAction(
   const estimated_hours = formData.get("estimated_hours") as string;
   const priority = (formData.get("priority") as string) || "medium";
 
+  // Atomically claim the next task number for this client
+  const { data: taskNumber, error: numError } = await supabase
+    .rpc("next_task_number_for_client", { p_client_id: client_id });
+
+  if (numError) return { error: numError.message };
+
   const { data, error } = await supabase
     .from("tasks")
     .insert({
@@ -45,14 +76,21 @@ export async function createTaskAction(
       priority,
       due_date: due_date || null,
       estimated_hours: estimated_hours ? parseFloat(estimated_hours) : null,
+      task_number: taskNumber,
     })
-    .select("id")
+    .select("id, task_number, clients(client_key)")
     .single();
 
   if (error) return { error: error.message };
 
+  const c = data.clients as unknown as { client_key: string | null } | null;
+  const slug =
+    c?.client_key && data.task_number != null
+      ? `${c.client_key}-${data.task_number}`
+      : data.id;
+
   revalidatePath("/tasks");
-  redirect(`/tasks/${data.id}`);
+  redirect(`/tasks/${slug}`);
 }
 
 // ─── Update metadata ──────────────────────────────────────────────────────────
@@ -92,7 +130,8 @@ export async function updateTaskMetaAction(
 
   if (error) return { error: error.message };
 
-  revalidatePath(`/tasks/${taskId}`);
+  const slug = await getTaskSlug(supabase, taskId);
+  revalidatePath(`/tasks/${slug}`);
   revalidatePath("/tasks");
   return {};
 }
@@ -120,7 +159,8 @@ export async function updateTaskContentAction(
 
   if (error) return { error: error.message };
 
-  revalidatePath(`/tasks/${taskId}`);
+  const slug = await getTaskSlug(supabase, taskId);
+  revalidatePath(`/tasks/${slug}`);
   return {};
 }
 
@@ -153,7 +193,8 @@ export async function updateTaskStatusAction(
 
   if (error) return { error: error.message };
 
-  revalidatePath(`/tasks/${taskId}`);
+  const slug = await getTaskSlug(supabase, taskId);
+  revalidatePath(`/tasks/${slug}`);
   revalidatePath("/tasks");
   return {};
 }
@@ -196,7 +237,8 @@ export async function closeTaskAction(
     // Email failure should not block the close action
   }
 
-  revalidatePath(`/tasks/${taskId}`);
+  const slug = await getTaskSlug(supabase, taskId);
+  revalidatePath(`/tasks/${slug}`);
   revalidatePath("/tasks");
   return {};
 }
@@ -254,7 +296,8 @@ export async function saveAttachmentAction(params: {
 
   if (error) return { error: error.message };
 
-  revalidatePath(`/tasks/${params.taskId}`);
+  const slug = await getTaskSlug(supabase, params.taskId);
+  revalidatePath(`/tasks/${slug}`);
   return {};
 }
 
@@ -280,6 +323,7 @@ export async function deleteAttachmentAction(
 
   if (error) return { error: error.message };
 
-  revalidatePath(`/tasks/${taskId}`);
+  const slug = await getTaskSlug(supabase, taskId);
+  revalidatePath(`/tasks/${slug}`);
   return {};
 }

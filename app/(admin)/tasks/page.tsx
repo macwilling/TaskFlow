@@ -26,7 +26,7 @@ export default async function TasksPage({
 
   let query = supabase
     .from("tasks")
-    .select("id, title, status, priority, due_date, created_at, clients(name, color)")
+    .select("id, task_number, title, status, priority, due_date, created_at, clients(name, color, client_key)")
     .order("created_at", { ascending: false });
 
   if (q) query = query.ilike("title", `%${q}%`);

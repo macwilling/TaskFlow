@@ -3,11 +3,18 @@ import { TaskPriorityBadge } from "./TaskStatusBadge";
 
 interface Task {
   id: string;
+  task_number: number | null;
   title: string;
   status: string;
   priority: string;
   due_date: string | null;
-  clients: { name: string; color: string | null } | null;
+  clients: { name: string; color: string | null; client_key: string | null } | null;
+}
+
+function taskHref(task: Task) {
+  const key = task.clients?.client_key;
+  if (key && task.task_number != null) return `/tasks/${key}-${task.task_number}`;
+  return `/tasks/${task.id}`;
 }
 
 const COLUMNS = [
@@ -34,9 +41,14 @@ function TaskCard({ task }: { task: Task }) {
   const overdue = isPastDue(task.due_date, task.status);
   return (
     <Link
-      href={`/tasks/${task.id}`}
+      href={taskHref(task)}
       className="block rounded-md border border-border bg-card p-3 shadow-sm hover:shadow-md hover:border-accent transition-all space-y-2"
     >
+      {task.clients?.client_key && task.task_number != null && (
+        <p className="font-mono text-[10px] text-muted-foreground">
+          {task.clients.client_key}-{task.task_number}
+        </p>
+      )}
       <p className="text-sm font-medium text-foreground leading-snug">{task.title}</p>
       <div className="flex items-center justify-between gap-2">
         <TaskPriorityBadge priority={task.priority} />

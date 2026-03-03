@@ -20,6 +20,7 @@ import {
 interface ClientData {
   id?: string;
   name?: string;
+  client_key?: string | null;
   company?: string;
   email?: string;
   phone?: string;
@@ -94,6 +95,27 @@ export function ClientForm({ action, client, cancelHref }: ClientFormProps) {
               placeholder="Jane Smith"
             />
           </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="client_key">
+              Client key <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="client_key"
+              name="client_key"
+              required={!client?.id}
+              defaultValue={client?.client_key ?? ""}
+              placeholder="AC"
+              className="uppercase"
+              maxLength={10}
+            />
+            <p className="text-xs text-muted-foreground">
+              2–10 letters/digits used as task ID prefix — e.g.{" "}
+              <span className="font-mono">AC-1</span>
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <Label htmlFor="company">Company</Label>
             <Input

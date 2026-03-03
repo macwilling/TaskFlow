@@ -15,9 +15,9 @@ import { TaskTimeEntries } from "@/components/time/TaskTimeEntries";
 export default async function TaskDetailPage({
   params,
 }: {
-  params: Promise<{ taskId: string }>;
+  params: Promise<{ taskKey: string }>;
 }) {
-  const { taskId } = await params;
+  const { taskKey } = await params;
   const supabase = await createClient();
 
   const {
@@ -26,11 +26,28 @@ export default async function TaskDetailPage({
 
   if (!user) notFound();
 
+  // Parse "AC-42" → clientKey="AC", taskNumber=42
+  const dashIdx = taskKey.lastIndexOf("-");
+  if (dashIdx === -1) notFound();
+  const clientKey = taskKey.slice(0, dashIdx).toUpperCase();
+  const taskNumber = parseInt(taskKey.slice(dashIdx + 1), 10);
+  if (!clientKey || isNaN(taskNumber)) notFound();
+
+  // Look up the client first (scoped to the user's tenant via RLS)
+  const { data: clientRow } = await supabase
+    .from("clients")
+    .select("id")
+    .eq("client_key", clientKey)
+    .single();
+
+  if (!clientRow) notFound();
+
   const [{ data: task, error }, { data: profile }] = await Promise.all([
     supabase
       .from("tasks")
-      .select("*, clients(id, name, color, tenant_id, tenants(id))")
-      .eq("id", taskId)
+      .select("*, clients(id, name, color, client_key, tenant_id, tenants(id))")
+      .eq("client_id", clientRow.id)
+      .eq("task_number", taskNumber)
       .single(),
     supabase.from("profiles").select("tenant_id").eq("id", user.id).single(),
   ]);
@@ -41,10 +58,12 @@ export default async function TaskDetailPage({
     id: string;
     name: string;
     color: string | null;
+    client_key: string | null;
     tenant_id: string;
     tenants: { id: string } | null;
   } | null;
 
+  const taskId = task.id as string;
   const tenantId = profile?.tenant_id ?? client?.tenant_id ?? "";
 
   const [
@@ -82,10 +101,13 @@ export default async function TaskDetailPage({
   ]);
 
   const isClosed = task.status === "closed";
+  const displayKey = client?.client_key
+    ? `${client.client_key}-${task.task_number}`
+    : null;
 
   function formatDate(d: string | null) {
     if (!d) return "—";
-    return new Date(d).toLocaleDateString(undefined, {
+    return new Date(d).toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -96,7 +118,11 @@ export default async function TaskDetailPage({
     <>
       <TopBar
         title={task.title}
-        description={client?.name}
+        description={
+          displayKey && client
+            ? `${displayKey} · ${client.name}`
+            : client?.name
+        }
         actions={
           !isClosed && (
             <CloseTaskDialog
@@ -143,6 +169,12 @@ export default async function TaskDetailPage({
               </div>
             </dl>
             <dl className="space-y-2">
+              <div className="flex gap-4">
+                <dt className="w-28 shrink-0 text-muted-foreground">Task ID</dt>
+                <dd className="font-mono text-xs text-muted-foreground pt-0.5">
+                  {displayKey ?? "—"}
+                </dd>
+              </div>
               <div className="flex gap-4">
                 <dt className="w-28 shrink-0 text-muted-foreground">Due date</dt>
                 <dd className={task.due_date && !isClosed && new Date(task.due_date) < new Date() ? "text-red-600 dark:text-red-400 font-medium" : "text-foreground"}>
