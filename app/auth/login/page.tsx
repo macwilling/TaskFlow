@@ -13,6 +13,7 @@ import { Zap } from "lucide-react";
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(
@@ -21,8 +22,10 @@ function LoginForm() {
       : null
   );
   const [loading, setLoading] = useState(false);
+  const [magicLinkLoading, setMagicLinkLoading] = useState(false);
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handlePasswordSignIn(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
@@ -40,6 +43,40 @@ function LoginForm() {
     router.refresh();
   }
 
+  async function handleMagicLink() {
+    if (!email) {
+      setError("Enter your email above first.");
+      return;
+    }
+    setError(null);
+    setMagicLinkLoading(true);
+
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+
+    if (error) {
+      setError(error.message);
+    } else {
+      setMagicLinkSent(true);
+    }
+    setMagicLinkLoading(false);
+  }
+
+  if (magicLinkSent) {
+    return (
+      <Alert>
+        <AlertDescription>
+          Magic link sent — check your email and click the link to sign in.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
   return (
     <>
       {error && (
@@ -48,7 +85,7 @@ function LoginForm() {
         </Alert>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handlePasswordSignIn} className="space-y-4">
         <div className="space-y-1.5">
           <Label htmlFor="email">Email</Label>
           <Input
@@ -83,10 +120,30 @@ function LoginForm() {
           />
         </div>
 
-        <Button type="submit" className="w-full" disabled={loading}>
+        <Button type="submit" className="w-full" disabled={loading || magicLinkLoading}>
           {loading ? "Signing in…" : "Sign in"}
         </Button>
       </form>
+
+      {/* Divider */}
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t border-border" />
+        </div>
+        <div className="relative flex justify-center text-xs">
+          <span className="bg-background px-2 text-muted-foreground">or</span>
+        </div>
+      </div>
+
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full"
+        disabled={loading || magicLinkLoading}
+        onClick={handleMagicLink}
+      >
+        {magicLinkLoading ? "Sending…" : "Email me a sign-in link"}
+      </Button>
     </>
   );
 }
@@ -103,7 +160,7 @@ export default function LoginPage() {
         <div className="space-y-1">
           <h1 className="text-xl font-semibold tracking-tight">Sign in</h1>
           <p className="text-sm text-muted-foreground">
-            Enter your email and password to continue.
+            Enter your email and password, or get a magic link.
           </p>
         </div>
 
