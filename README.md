@@ -4,7 +4,7 @@ A multi-tenant SaaS platform for independent consultants to manage clients, task
 
 ## Tech Stack
 
-- **Framework:** Next.js 15 (App Router)
+- **Framework:** Next.js 16 (App Router)
 - **Database + Auth:** Supabase (Postgres + RLS + Auth)
 - **File Storage:** Cloudflare R2
 - **Email:** Resend
@@ -124,11 +124,11 @@ DNS is managed on Cloudflare with a grey-cloud (DNS-only) CNAME pointing to Verc
 | Phase | Description | Status |
 |---|---|---|
 | 0 | Project bootstrap | ✅ Done |
-| 1a | Auth: email/password | Pending |
-| 1b | Auth: magic link | Pending |
-| 1c | Auth: Google OAuth | Pending |
-| 2 | Client management | Pending |
-| 3 | Task management | Pending |
+| 1a | Auth: email/password | ✅ Done |
+| 1b | Auth: magic link | ✅ Done |
+| 1c | Auth: Google OAuth | ✅ Done |
+| 2 | Client management | ✅ Done |
+| 3 | Task management | 🔄 In Progress |
 | 4 | Time tracking | Pending |
 | 5 | Invoicing + PDF | Pending |
 | 6a | Client portal | Pending |
