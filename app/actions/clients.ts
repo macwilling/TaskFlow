@@ -1,0 +1,143 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+
+interface ClientFields {
+  name: string;
+  company: string;
+  email: string;
+  phone: string;
+  default_rate: string;
+  payment_terms: string;
+  currency: string;
+  color: string;
+  notes: string;
+  billing_line1: string;
+  billing_line2: string;
+  billing_city: string;
+  billing_state: string;
+  billing_postal_code: string;
+  billing_country: string;
+}
+
+function buildClientPayload(fields: ClientFields) {
+  return {
+    name: fields.name.trim(),
+    company: fields.company.trim() || null,
+    email: fields.email.trim() || null,
+    phone: fields.phone.trim() || null,
+    default_rate: fields.default_rate ? parseFloat(fields.default_rate) : null,
+    payment_terms: fields.payment_terms ? parseInt(fields.payment_terms) : 30,
+    currency: fields.currency || "USD",
+    color: fields.color || "#0969da",
+    notes: fields.notes.trim() || null,
+    billing_address: {
+      line1: fields.billing_line1.trim() || null,
+      line2: fields.billing_line2.trim() || null,
+      city: fields.billing_city.trim() || null,
+      state: fields.billing_state.trim() || null,
+      postal_code: fields.billing_postal_code.trim() || null,
+      country: fields.billing_country.trim() || null,
+    },
+  };
+}
+
+export async function createClientAction(
+  _prev: { error?: string } | null,
+  formData: FormData
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user || user.app_metadata?.role !== "admin") {
+    return { error: "Unauthorized." };
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("tenant_id")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile) return { error: "Profile not found." };
+
+  const keys = [
+    "name", "company", "email", "phone", "default_rate", "payment_terms",
+    "currency", "color", "notes", "billing_line1", "billing_line2",
+    "billing_city", "billing_state", "billing_postal_code", "billing_country",
+  ] as const;
+  const fields = Object.fromEntries(
+    keys.map((k) => [k, (formData.get(k) as string) ?? ""])
+  ) as unknown as ClientFields;
+
+  if (!fields.name.trim()) return { error: "Client name is required." };
+
+  const { data, error } = await supabase
+    .from("clients")
+    .insert({ tenant_id: profile.tenant_id, ...buildClientPayload(fields) })
+    .select("id")
+    .single();
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/clients");
+  redirect(`/clients/${data.id}`);
+}
+
+export async function updateClientAction(
+  clientId: string,
+  _prev: { error?: string } | null,
+  formData: FormData
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user || user.app_metadata?.role !== "admin") {
+    return { error: "Unauthorized." };
+  }
+
+  const keys = [
+    "name", "company", "email", "phone", "default_rate", "payment_terms",
+    "currency", "color", "notes", "billing_line1", "billing_line2",
+    "billing_city", "billing_state", "billing_postal_code", "billing_country",
+  ] as const;
+  const fields = Object.fromEntries(
+    keys.map((k) => [k, (formData.get(k) as string) ?? ""])
+  ) as unknown as ClientFields;
+
+  if (!fields.name.trim()) return { error: "Client name is required." };
+
+  const { error } = await supabase
+    .from("clients")
+    .update(buildClientPayload(fields))
+    .eq("id", clientId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/clients/${clientId}`);
+  revalidatePath("/clients");
+  redirect(`/clients/${clientId}`);
+}
+
+export async function archiveClientAction(clientId: string, archive: boolean) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user || user.app_metadata?.role !== "admin") return;
+
+  await supabase
+    .from("clients")
+    .update({ is_archived: archive })
+    .eq("id", clientId);
+
+  revalidatePath(`/clients/${clientId}`);
+  revalidatePath("/clients");
+}
