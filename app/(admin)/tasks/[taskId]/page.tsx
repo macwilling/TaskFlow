@@ -4,14 +4,13 @@ import { createClient } from "@/lib/supabase/server";
 import { TopBar } from "@/components/layout/TopBar";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Separator } from "@/components/ui/separator";
-import { Button } from "@/components/ui/button";
 import { TaskStatusControl } from "@/components/tasks/TaskStatusControl";
 import { TaskPriorityBadge } from "@/components/tasks/TaskStatusBadge";
 import { CloseTaskDialog } from "@/components/tasks/CloseTaskDialog";
 import { TaskEditors } from "@/components/tasks/TaskEditors";
 import { AttachmentsList } from "@/components/tasks/AttachmentsList";
 import { CommentThread } from "@/components/comments/CommentThread";
-import { Pencil, Clock } from "lucide-react";
+import { TaskTimeEntries } from "@/components/time/TaskTimeEntries";
 
 export default async function TaskDetailPage({
   params,
@@ -48,7 +47,13 @@ export default async function TaskDetailPage({
 
   const tenantId = profile?.tenant_id ?? client?.tenant_id ?? "";
 
-  const [{ data: attachments }, { data: comments }] = await Promise.all([
+  const [
+    { data: attachments },
+    { data: comments },
+    { data: timeEntries },
+    { data: allClients },
+    { data: openTasks },
+  ] = await Promise.all([
     supabase
       .from("task_attachments")
       .select("id, file_name, file_size, mime_type, public_url, created_at")
@@ -59,6 +64,21 @@ export default async function TaskDetailPage({
       .select("id, body, author_role, author_id, created_at")
       .eq("task_id", taskId)
       .order("created_at", { ascending: true }),
+    supabase
+      .from("time_entries")
+      .select("id, description, entry_date, duration_hours, billable, billed, hourly_rate")
+      .eq("task_id", taskId)
+      .order("entry_date", { ascending: false }),
+    supabase
+      .from("clients")
+      .select("id, name, color, default_rate")
+      .eq("is_archived", false)
+      .order("name"),
+    supabase
+      .from("tasks")
+      .select("id, title, client_id")
+      .not("status", "eq", "closed")
+      .order("title"),
   ]);
 
   const isClosed = task.status === "closed";
@@ -78,20 +98,12 @@ export default async function TaskDetailPage({
         title={task.title}
         description={client?.name}
         actions={
-          <div className="flex items-center gap-2">
-            {!isClosed && (
-              <CloseTaskDialog
-                taskId={taskId}
-                currentResolutionNotes={task.resolution_notes ?? ""}
-              />
-            )}
-            <Button asChild variant="outline" size="sm" className="h-7 gap-1 text-xs">
-              <Link href="/time">
-                <Clock className="h-3.5 w-3.5" />
-                Log time
-              </Link>
-            </Button>
-          </div>
+          !isClosed && (
+            <CloseTaskDialog
+              taskId={taskId}
+              currentResolutionNotes={task.resolution_notes ?? ""}
+            />
+          )
         }
       />
 
@@ -178,12 +190,14 @@ export default async function TaskDetailPage({
 
           <Separator />
 
-          {/* Time entries stub */}
-          <div className="rounded-md border border-dashed border-border p-4 text-center">
-            <Clock className="mx-auto h-4 w-4 text-muted-foreground mb-2" />
-            <p className="text-sm font-medium">Time entries</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Available in Phase 4</p>
-          </div>
+          {/* Time entries */}
+          <TaskTimeEntries
+            taskId={taskId}
+            clientId={client?.id ?? ""}
+            clients={allClients ?? []}
+            tasks={openTasks ?? []}
+            entries={timeEntries ?? []}
+          />
 
           <Separator />
 

@@ -94,6 +94,24 @@ The component uses `useEffect` + `useRef` to create/destroy the `Crepe` instance
 
 CSS is imported in `globals.css` (`@import "@milkdown/crepe/theme/common/style.css"` + `frame.css` at the top, before `@tailwind`). Crepe color tokens are overridden in `globals.css` under `.milkdown { --crepe-color-* }` to match our design-system variables — dark mode adapts automatically since our Tailwind vars change under `.dark { }`.
 
+### FullCalendar (Phase 4)
+
+`components/time/TimeCalendar.tsx` — always dynamically imported via a `"use client"` wrapper:
+
+```ts
+// TimeCalendarWrapper.tsx ("use client")
+const TimeCalendarDynamic = dynamic(
+  () => import("@/components/time/TimeCalendar").then((m) => m.TimeCalendar),
+  { ssr: false }
+);
+```
+
+`ssr: false` in `next/dynamic` is NOT allowed in Server Components in Next.js 16 — must live in a Client Component wrapper. This applies to any library that requires the browser (FullCalendar, Milkdown, etc.).
+
+Event fetching: FullCalendar's `events` callback prop calls `GET /api/time-entries?start=...&end=...`. Drag-drop calls `updateTimeEntryDateAction` server action. `calendarRef.current?.getApi().refetchEvents()` refreshes calendar after mutations.
+
+`EventDropArg` is in `@fullcalendar/core`, not `@fullcalendar/interaction`. `DateClickArg` is in `@fullcalendar/interaction`.
+
 ### File uploads (Cloudflare R2)
 
 `POST /api/upload?path=<r2-prefix>` with `multipart/form-data`. Returns `{ url, key }`. Path convention: `tenant-{tenantId}/tasks/{taskId}/inline` for editor images, `tenant-{tenantId}/tasks/{taskId}/attachments` for file attachments.
@@ -127,7 +145,7 @@ ALLOW_REGISTRATION             # "true" to allow /auth/register
 
 ## Implementation status
 
-Phases 0–3 complete. Phase 4 (Time Tracking / FullCalendar) is next.
+Phases 0–4 complete. Phase 5 (Invoicing + React-PDF) is next.
 
 | Phase | Description | Status |
 |---|---|---|
@@ -135,7 +153,7 @@ Phases 0–3 complete. Phase 4 (Time Tracking / FullCalendar) is next.
 | 1a–1c | Auth (email, magic link, Google OAuth) | ✅ Done |
 | 2 | Client management | ✅ Done |
 | 3 | Task management + Milkdown + R2 | ✅ Done |
-| 4 | Time tracking + FullCalendar | Pending |
+| 4 | Time tracking + FullCalendar | ✅ Done |
 | 5 | Invoicing + React-PDF | Pending |
 | 6a–6c | Client portal | Pending |
 | 7 | Settings + Reports | Pending |
