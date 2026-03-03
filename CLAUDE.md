@@ -160,3 +160,11 @@ Phases 0–4 complete. Phase 5 (Invoicing + React-PDF) is next.
 | 8 | Polish + hardening | Pending |
 
 Full technical plan (DB schema, route map, component architecture, integration notes) is in `plan.md`.
+
+## Reference docs (`docs/`)
+
+| File | Contents |
+|---|---|
+| `docs/schema-reference.md` | All tables, columns, FK relationships, RLS summary — quick lookup without reading migrations |
+| `docs/supabase-patterns.md` | Client selection, join typing, RLS policy templates, atomic invoice number, overdue status pattern |
+| `docs/component-patterns.md` | SC vs CC decision, `dynamic(ssr:false)` wrapper pattern, server action patterns, `useTransition` for dialogs, hydration-safe date formatting, shadcn components installed |
