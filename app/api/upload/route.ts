@@ -28,6 +28,10 @@ function getS3Client() {
     region: "auto",
     endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
     credentials: { accessKeyId, secretAccessKey },
+    // R2 doesn't support the CRC32 checksums that AWS SDK v3 sends by default.
+    // Without these two flags the signature calculation diverges and R2 rejects the request.
+    requestChecksumCalculation: "WHEN_REQUIRED",
+    responseChecksumValidation: "WHEN_REQUIRED",
   });
 }
 
