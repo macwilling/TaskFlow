@@ -1,7 +1,11 @@
 "use client";
-import { useActionState } from "react";
+import { useActionState, useTransition, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { inviteClientToPortalAction } from "@/app/actions/portal";
+import {
+  inviteClientToPortalAction,
+  sendPortalSignInLinkAction,
+  revokePortalAccessAction,
+} from "@/app/actions/portal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,8 +31,20 @@ export function PortalAccessSection({
   hasAccess: boolean;
   acceptedAt: string | null;
 }) {
-  const boundAction = inviteClientToPortalAction.bind(null, clientId);
-  const [state, formAction] = useActionState(boundAction, null);
+  const boundInvite = inviteClientToPortalAction.bind(null, clientId);
+  const [inviteState, inviteFormAction] = useActionState(boundInvite, null);
+
+  const boundSendLink = sendPortalSignInLinkAction.bind(null, clientId);
+  const [linkState, sendLinkAction] = useActionState(boundSendLink, null);
+
+  const [isPending, startTransition] = useTransition();
+  const [confirmRevoke, setConfirmRevoke] = useState(false);
+
+  function handleRevoke() {
+    startTransition(async () => {
+      await revokePortalAccessAction(clientId);
+    });
+  }
 
   return (
     <div>
@@ -37,14 +53,75 @@ export function PortalAccessSection({
       </h2>
 
       {hasAccess ? (
-        <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400">
-          <CheckCircle2 className="h-4 w-4" />
-          <span>
-            Portal access granted
-            {acceptedAt
-              ? ` · accepted ${new Date(acceptedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
-              : ""}
-          </span>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400">
+            <CheckCircle2 className="h-4 w-4 shrink-0" />
+            <span>
+              Portal access granted
+              {acceptedAt
+                ? ` · accepted ${new Date(acceptedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
+                : ""}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* Send sign-in link */}
+            {linkState?.success ? (
+              <span className="text-xs text-emerald-600 dark:text-emerald-400">
+                Sign-in link sent.
+              </span>
+            ) : (
+              <form action={sendLinkAction}>
+                <Button
+                  type="submit"
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs"
+                  disabled={isPending}
+                >
+                  Send sign-in link
+                </Button>
+              </form>
+            )}
+
+            {/* Revoke access */}
+            {confirmRevoke ? (
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">Revoke access?</span>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="h-7 text-xs"
+                  disabled={isPending}
+                  onClick={handleRevoke}
+                >
+                  {isPending ? "Revoking…" : "Yes, revoke"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-xs"
+                  disabled={isPending}
+                  onClick={() => setConfirmRevoke(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            ) : (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 text-xs text-destructive hover:text-destructive"
+                onClick={() => setConfirmRevoke(true)}
+              >
+                Revoke access
+              </Button>
+            )}
+          </div>
+
+          {linkState?.error && (
+            <p className="text-xs text-destructive">{linkState.error}</p>
+          )}
         </div>
       ) : (
         <>
@@ -52,12 +129,12 @@ export function PortalAccessSection({
             Invite this client to access their portal. They&apos;ll receive an email with a
             magic link to set up their account.
           </p>
-          {state?.success ? (
+          {inviteState?.success ? (
             <p className="text-sm text-emerald-600 dark:text-emerald-400">
               Invite sent successfully.
             </p>
           ) : (
-            <form action={formAction} className="flex items-end gap-2 max-w-sm">
+            <form action={inviteFormAction} className="flex items-end gap-2 max-w-sm">
               <div className="flex-1 space-y-1">
                 <Label htmlFor="portal-invite-email" className="text-xs">
                   Email address
@@ -75,8 +152,8 @@ export function PortalAccessSection({
               <SubmitButton />
             </form>
           )}
-          {state?.error && (
-            <p className="mt-1.5 text-xs text-destructive">{state.error}</p>
+          {inviteState?.error && (
+            <p className="mt-1.5 text-xs text-destructive">{inviteState.error}</p>
           )}
         </>
       )}

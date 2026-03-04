@@ -3,10 +3,12 @@ import { PortalLoginForm } from "@/components/portal/PortalLoginForm";
 
 export default async function PortalLoginPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ tenantSlug: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
-  const { tenantSlug } = await params;
+  const [{ tenantSlug }, { error }] = await Promise.all([params, searchParams]);
 
   const admin = createAdminClient();
   const { data: tenant } = await admin
@@ -34,7 +36,7 @@ export default async function PortalLoginPage({
             Sign in to your client portal
           </p>
         </div>
-        <PortalLoginForm tenantSlug={tenantSlug} />
+        <PortalLoginForm tenantSlug={tenantSlug} initialError={error} />
       </div>
     </div>
   );
