@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 interface ClientFields {
   name: string;
@@ -134,12 +135,36 @@ export async function updateClientAction(
     if (keyError) return { error: keyError };
   }
 
+  // Fetch current email before update to detect changes
+  const { data: existing } = await supabase
+    .from("clients")
+    .select("email")
+    .eq("id", clientId)
+    .single();
+
   const { error } = await supabase
     .from("clients")
     .update(buildClientPayload(fields))
     .eq("id", clientId);
 
   if (error) return { error: error.message };
+
+  // Sync auth user email if it changed and client has portal access
+  const newEmail = fields.email.trim();
+  if (existing && existing.email !== newEmail && newEmail) {
+    const admin = createAdminClient();
+    const { data: access } = await admin
+      .from("client_portal_access")
+      .select("user_id")
+      .eq("client_id", clientId)
+      .single();
+    if (access?.user_id) {
+      await admin.auth.admin.updateUserById(access.user_id as string, {
+        email: newEmail,
+        email_confirm: true,
+      });
+    }
+  }
 
   revalidatePath(`/clients/${clientId}`);
   revalidatePath("/clients");

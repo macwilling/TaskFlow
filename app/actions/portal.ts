@@ -104,3 +104,95 @@ export async function finalizeInviteAction(): Promise<{
 
   return { slug: tenant.slug };
 }
+
+export async function sendPortalSignInLinkAction(
+  clientId: string,
+  _prev: { error?: string; success?: boolean } | null
+): Promise<{ error?: string; success?: boolean }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Unauthorized." };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("tenant_id, role")
+    .eq("id", user.id)
+    .single();
+  if (!profile || profile.role !== "admin") return { error: "Unauthorized." };
+
+  // Get client email and portal access
+  const { data: client } = await supabase
+    .from("clients")
+    .select("email")
+    .eq("id", clientId)
+    .single();
+  if (!client?.email) return { error: "Client email not found." };
+
+  const admin = createAdminClient();
+  const { data: access } = await admin
+    .from("client_portal_access")
+    .select("user_id")
+    .eq("client_id", clientId)
+    .eq("tenant_id", profile.tenant_id)
+    .single();
+  if (!access) return { error: "Client does not have portal access." };
+
+  const { data: tenant } = await admin
+    .from("tenants")
+    .select("slug")
+    .eq("id", profile.tenant_id)
+    .single();
+  if (!tenant) return { error: "Tenant not found." };
+
+  const { error } = await supabase.auth.signInWithOtp({
+    email: client.email,
+    options: {
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?next=/portal/${tenant.slug}`,
+    },
+  });
+
+  if (error) return { error: error.message };
+  return { success: true };
+}
+
+export async function revokePortalAccessAction(
+  clientId: string
+): Promise<{ error?: string; success?: boolean }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Unauthorized." };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("tenant_id, role")
+    .eq("id", user.id)
+    .single();
+  if (!profile || profile.role !== "admin") return { error: "Unauthorized." };
+
+  const admin = createAdminClient();
+  const { data: access } = await admin
+    .from("client_portal_access")
+    .select("user_id")
+    .eq("client_id", clientId)
+    .eq("tenant_id", profile.tenant_id)
+    .single();
+  if (!access) return { error: "No portal access found." };
+
+  const userId = access.user_id as string;
+
+  await admin.from("profiles").delete().eq("id", userId);
+  await admin
+    .from("client_portal_access")
+    .delete()
+    .eq("client_id", clientId)
+    .eq("tenant_id", profile.tenant_id);
+  await admin.auth.admin.deleteUser(userId);
+
+  const { revalidatePath } = await import("next/cache");
+  revalidatePath(`/clients/${clientId}`);
+  return { success: true };
+}
