@@ -1,10 +1,14 @@
 "use client";
 
-import { useActionState, useRef, useTransition } from "react";
-import { createCommentAction, deleteCommentAction } from "@/app/actions/comments";
+import { useActionState, useRef, useState, useTransition } from "react";
+import {
+  createCommentAction,
+  updateCommentAction,
+  deleteCommentAction,
+} from "@/app/actions/comments";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 
 interface Comment {
   id: string;
@@ -40,12 +44,27 @@ function CommentRow({
   currentUserId: string;
 }) {
   const [isPending, startTransition] = useTransition();
+  const [editing, setEditing] = useState(false);
+  const [editBody, setEditBody] = useState(comment.body);
+  const [editError, setEditError] = useState<string | null>(null);
   const isOwn = comment.author_id === currentUserId;
 
   function handleDelete() {
     if (!confirm("Delete this comment?")) return;
     startTransition(async () => {
       await deleteCommentAction(comment.id, taskId);
+    });
+  }
+
+  function handleEditSave() {
+    setEditError(null);
+    startTransition(async () => {
+      const result = await updateCommentAction(comment.id, taskId, editBody);
+      if (result?.error) {
+        setEditError(result.error);
+      } else {
+        setEditing(false);
+      }
     });
   }
 
@@ -66,18 +85,67 @@ function CommentRow({
             {formatDate(comment.created_at)}
           </span>
         </div>
-        <p className="text-sm text-foreground whitespace-pre-line">{comment.body}</p>
+        {editing ? (
+          <div className="space-y-1">
+            <Textarea
+              value={editBody}
+              onChange={(e) => setEditBody(e.target.value)}
+              rows={3}
+              className="resize-none text-sm"
+              aria-label="Edit comment"
+            />
+            {editError && <p className="text-xs text-destructive">{editError}</p>}
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                className="h-6 text-xs"
+                onClick={handleEditSave}
+                disabled={isPending}
+              >
+                {isPending ? "Saving…" : "Save"}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 text-xs"
+                onClick={() => {
+                  setEditing(false);
+                  setEditBody(comment.body);
+                  setEditError(null);
+                }}
+                disabled={isPending}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-foreground whitespace-pre-line">{comment.body}</p>
+        )}
       </div>
-      {isOwn && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 w-6 p-0 self-start text-muted-foreground hover:text-destructive"
-          onClick={handleDelete}
-          disabled={isPending}
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
+      {isOwn && !editing && (
+        <div className="flex items-start gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+            onClick={() => setEditing(true)}
+            disabled={isPending}
+            aria-label="Edit comment"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+            onClick={handleDelete}
+            disabled={isPending}
+            aria-label="Delete comment"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       )}
     </div>
   );

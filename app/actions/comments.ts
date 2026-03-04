@@ -74,6 +74,38 @@ export async function createCommentAction(
   return {};
 }
 
+export async function updateCommentAction(
+  commentId: string,
+  taskId: string,
+  body: string
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { error: "Unauthorized." };
+
+  const trimmed = body.trim();
+  if (!trimmed) return { error: "Comment cannot be empty." };
+
+  const { error } = await supabase
+    .from("comments")
+    .update({ body: trimmed })
+    .eq("id", commentId)
+    .eq("author_id", user.id); // ensures users can only edit their own
+
+  if (error) return { error: error.message };
+
+  const slug = await getTaskSlug(supabase, taskId);
+  revalidatePath(`/tasks/${slug}`);
+
+  const tenantSlug = user.app_metadata?.tenant_slug as string | undefined;
+  if (tenantSlug) revalidatePath(`/portal/${tenantSlug}/tasks/${taskId}`);
+
+  return {};
+}
+
 export async function deleteCommentAction(
   commentId: string,
   taskId: string
