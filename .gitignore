@@ -19,6 +19,9 @@ tests/e2e/fixtures/seed.json
 # production
 /build
 
+# claude code
+.claude/
+
 # misc
 .DS_Store
 *.pem
