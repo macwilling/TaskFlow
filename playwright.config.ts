@@ -8,6 +8,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: "html",
   globalSetup: "./tests/e2e/fixtures/global-setup.ts",
+  globalTeardown: "./tests/e2e/fixtures/global-teardown.ts",
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000",
     trace: "on-first-retry",
