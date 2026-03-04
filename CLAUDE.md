@@ -5,13 +5,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npm run dev      # Start development server (localhost:3000)
-npm run build    # Production build — also runs TypeScript type-check
-npm run lint     # ESLint (flat config, eslint.config.mjs)
-npm run start    # Serve production build
+npm run dev        # Start development server (localhost:3000)
+npm run build      # Production build — also runs TypeScript type-check
+npm run lint       # ESLint (flat config, eslint.config.mjs)
+npm run start      # Serve production build
+npm run test       # All tests (unit + integration)
+npm run test:unit  # Vitest unit/integration tests
+npm run test:e2e   # Playwright E2E tests (requires dev server running)
 ```
 
-There are no tests. The build (`npm run build`) is the primary correctness check — always run it after changes.
+**Definition of done:** a feature or fix is not complete until `npm run build` passes **and** relevant tests pass. When adding or modifying logic in server actions, API routes, auth flows, or RLS-dependent queries, write or update the corresponding test. Do not leave tests as a follow-up — ship them with the change.
+
+**Parallel work:** each task or issue group is developed in its own git worktree on a dedicated branch, then merged via PR. When starting a new task, work in a worktree unless told otherwise.
 
 ## Architecture
 
@@ -160,6 +165,44 @@ Phases 0–5 complete. Phase 6a (Client portal) is next.
 | 8 | Polish + hardening | Pending |
 
 Full technical plan (DB schema, route map, component architecture, integration notes) is in `plan.md`.
+
+## Testing conventions
+
+Infrastructure is set up in issue #28. Follow these rules for all subsequent work:
+
+### What to test
+| Code changed | Required test |
+|---|---|
+| Server action (`app/actions/`) | Vitest unit test — mock Supabase, assert success + error paths |
+| API route (`app/api/`) | Vitest integration test — mock external services (Resend, R2) |
+| Auth / middleware logic | Vitest unit test — mock session, assert redirects and role gates |
+| RLS policy added/changed | Vitest integration test against Supabase test project |
+| New page or user flow | Playwright E2E spec |
+
+### Unit test rules
+- **Never hit real Supabase** — use the mock client at `lib/supabase/__mocks__/`
+- Mock `lib/supabase/server.ts`, `lib/supabase/admin.ts`, and `lib/supabase/client.ts` via Vitest's module mocking
+- Mock external services: Resend (`resend`), AWS S3Client (`@aws-sdk/client-s3`)
+- Assert both the happy path and the primary error path for every action
+- Server actions must assert `revalidatePath` is called on success and an `{ error }` object is returned on failure
+
+### E2E test rules
+- Use `storageState` fixtures to cache authenticated sessions — never re-login in every test
+- Mock `/api/upload` in CI to return a fixture URL (avoid real R2 calls)
+- Set `RESEND_API_KEY=test` or intercept with `page.route()` — never send real emails in tests
+- Seed test data via Supabase admin API before suites; clean up after
+
+### File structure
+```
+src/lib/                    # Unit tests co-located with source
+  example.test.ts
+  supabase/__mocks__/       # Shared Supabase mock client
+tests/
+  e2e/                      # Playwright specs
+    fixtures/               # storageState, shared helpers
+vitest.config.ts
+playwright.config.ts
+```
 
 ## Reference docs (`docs/`)
 
