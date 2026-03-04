@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
+import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import type { DateClickArg } from "@fullcalendar/interaction";
 import type { EventClickArg, EventSourceFuncArg, EventDropArg } from "@fullcalendar/core";
@@ -94,12 +95,12 @@ export function TimeCalendar({ clients, tasks }: TimeCalendarProps) {
       <div className="fc-wrapper [&_.fc-toolbar-title]:text-base [&_.fc-toolbar-title]:font-semibold [&_.fc-button]:text-xs [&_.fc-button]:capitalize [&_.fc-button-primary]:bg-primary [&_.fc-button-primary]:border-primary [&_.fc-button-primary:hover]:opacity-90 [&_.fc-button-primary:not(.fc-button-active)]:bg-muted [&_.fc-button-primary:not(.fc-button-active)]:text-foreground [&_.fc-button-primary:not(.fc-button-active)]:border-border [&_.fc-button-primary:not(.fc-button-active):hover]:bg-accent [&_.fc-daygrid-day-number]:text-xs [&_.fc-col-header-cell-cushion]:text-xs [&_.fc-col-header-cell-cushion]:font-medium [&_.fc-event]:cursor-pointer [&_.fc-event-title]:truncate">
         <FullCalendar
           ref={calendarRef}
-          plugins={[dayGridPlugin, interactionPlugin]}
-          initialView="dayGridMonth"
+          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+          initialView="dayGridWeek"
           headerToolbar={{
             left: "prev,next today",
             center: "title",
-            right: "",
+            right: "dayGridMonth,dayGridWeek,timeGridWeek",
           }}
           events={fetchEvents}
           editable={true}
