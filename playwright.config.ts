@@ -26,7 +26,7 @@ export default defineConfig({
       name: "chromium",
       use: {
         ...devices["Desktop Chrome"],
-        // billing.spec.ts loads storageState via test.use() directly
+        // Each spec that needs auth loads storageState via test.use() directly
       },
       // Auth setup must complete before any other test
       dependencies: ["auth-setup"],
