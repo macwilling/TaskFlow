@@ -7,14 +7,29 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: "html",
+  globalSetup: "./tests/e2e/fixtures/global-setup.ts",
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000",
     trace: "on-first-retry",
   },
   projects: [
+    // Auth setup — verifies the storageState written by global-setup.ts
+    {
+      name: "auth-setup",
+      testMatch: /auth\.setup\.ts/,
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "./tests/e2e/fixtures/.auth/admin.json",
+      },
+    },
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        // billing.spec.ts loads storageState via test.use() directly
+      },
+      // Auth setup must complete before any other test
+      dependencies: ["auth-setup"],
     },
   ],
   webServer: process.env.CI
