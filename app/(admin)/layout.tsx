@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { UserMenu } from "@/components/layout/UserMenu";
+import { SidebarShell } from "@/components/layout/SidebarShell";
 
 export default async function AdminLayout({
   children,
@@ -25,15 +26,16 @@ export default async function AdminLayout({
     .single();
 
   return (
-    <div className="flex min-h-screen">
-      <aside className="fixed inset-y-0 left-0 z-50 flex w-56 flex-col border-r border-border bg-background">
-        <Sidebar />
+    <SidebarShell
+      sidebar={<Sidebar />}
+      userMenu={
         <UserMenu
           email={user.email ?? ""}
           name={profile?.full_name ?? undefined}
         />
-      </aside>
-      <div className="flex flex-1 flex-col pl-56">{children}</div>
-    </div>
+      }
+    >
+      {children}
+    </SidebarShell>
   );
 }

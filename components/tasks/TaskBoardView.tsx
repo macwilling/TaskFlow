@@ -31,7 +31,7 @@ function isPastDue(due: string | null, status: string) {
 
 function formatDate(d: string | null) {
   if (!d) return null;
-  return new Date(d).toLocaleDateString(undefined, {
+  return new Date(d).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
   });
@@ -80,7 +80,7 @@ export function TaskBoardView({ tasks }: { tasks: Task[] }) {
   );
 
   return (
-    <div className="grid grid-cols-4 gap-3 min-h-[400px]">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 min-h-[400px]">
       {COLUMNS.map((col) => {
         const colTasks = byStatus[col.id] ?? [];
         return (

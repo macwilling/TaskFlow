@@ -31,7 +31,10 @@ Built with Next.js 16 App Router, Supabase, and a fully type-safe stack. Each te
 ### UX
 - **Optimistic UI** — instant feedback on status changes with background server sync
 - **Loading skeletons** — skeleton screens on all data-heavy pages for perceived performance
-- **Dark mode** — first-class dark mode via CSS variables throughout
+- **Dark mode** — first-class dark mode via CSS variables; toggle in sidebar footer; respects system preference with no flash
+- **Mobile responsive** — hamburger sidebar on mobile, horizontal-scroll tables, single-column kanban
+- **Email audit log** — read-only table of all sent emails at `/email-log`
+- **Error boundaries** — `error.tsx` and `not-found.tsx` at the route-segment level
 
 ## Tech Stack
 
@@ -153,13 +156,14 @@ Open [http://localhost:3000](http://localhost:3000). Register a new account (req
 ## Available Scripts
 
 ```bash
-npm run dev      # Start development server
-npm run build    # Production build + TypeScript type-check
-npm run lint     # ESLint
-npm run start    # Serve production build
+npm run dev        # Start development server
+npm run build      # Production build + TypeScript type-check
+npm run lint       # ESLint
+npm run start      # Serve production build
+npm run test       # All tests (unit + integration)
+npm run test:unit  # Vitest unit/integration tests
+npm run test:e2e   # Playwright E2E tests (requires dev server running)
 ```
-
-> There are no automated tests. `npm run build` is the primary correctness check — always run it after changes.
 
 ## Deployment
 
@@ -185,8 +189,8 @@ DNS is managed on Cloudflare with a grey-cloud (DNS-only) CNAME pointing to Verc
 | 3 | Task management + Milkdown editor + R2 uploads | ✅ Done |
 | 4 | Time tracking + FullCalendar | ✅ Done |
 | 5 | Invoicing + React-PDF | ✅ Done |
-| 6a | Client portal | Pending |
-| 6b | Portal: magic link auth | Pending |
-| 6c | Portal: Google OAuth | Pending |
-| 7 | Settings + reports | Pending |
-| 8 | Polish + hardening | Pending |
+| 6a | Client portal | ✅ Done |
+| 6b | Portal: magic link auth | ✅ Done |
+| 6c | Portal: Google OAuth | ✅ Done |
+| 7 | Settings + reports | ✅ Done |
+| 8 | Polish + hardening | ✅ Done |

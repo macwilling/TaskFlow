@@ -51,8 +51,8 @@ async function ClientTable({ q, archived }: { q?: string; archived?: string }) {
   }
 
   return (
-    <div className="rounded-md border border-border">
-      <table className="w-full text-sm">
+    <div className="rounded-md border border-border overflow-x-auto">
+      <table className="w-full min-w-[600px] text-sm">
         <thead>
           <tr className="border-b border-border bg-muted/40">
             <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Client</th>

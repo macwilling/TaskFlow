@@ -11,6 +11,7 @@ import {
   BarChart2,
   Settings,
   Zap,
+  Mail,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +23,7 @@ const navItems = [
   { href: "/invoices", label: "Invoices", icon: FileText },
   { href: "/reports", label: "Reports", icon: BarChart2 },
   { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/email-log", label: "Email Log", icon: Mail },
 ];
 
 export function Sidebar() {

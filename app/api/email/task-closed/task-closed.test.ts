@@ -5,6 +5,7 @@ import { NextRequest } from "next/server";
 
 const mockEmailsSend = vi.hoisted(() => vi.fn());
 const mockFrom = vi.hoisted(() => vi.fn());
+const mockGetUser = vi.hoisted(() => vi.fn());
 
 vi.mock("resend", () => ({
   // Use a class so `new Resend(...)` works in Vitest v4
@@ -13,9 +14,15 @@ vi.mock("resend", () => ({
   },
 }));
 
+vi.mock("@/lib/supabase/server", () => ({
+  createClient: () => Promise.resolve({ auth: { getUser: mockGetUser } }),
+}));
+
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({ from: mockFrom }),
 }));
+
+const adminUser = { id: "user-1", app_metadata: { role: "admin" } };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -54,6 +61,24 @@ describe("POST /api/email/task-closed", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     process.env.NEXT_PUBLIC_APP_URL = "https://app.example.com";
+    // Default: authenticated admin user
+    mockGetUser.mockResolvedValue({ data: { user: adminUser } });
+  });
+
+  it("returns 401 when user is not authenticated", async () => {
+    mockGetUser.mockResolvedValueOnce({ data: { user: null } });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ taskId: "task-1" }));
+    expect(res.status).toBe(401);
+    const json = await res.json();
+    expect(json.error).toMatch(/unauthorized/i);
+  });
+
+  it("returns 401 when user is not an admin", async () => {
+    mockGetUser.mockResolvedValueOnce({ data: { user: { id: "u2", app_metadata: { role: "client" } } } });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ taskId: "task-1" }));
+    expect(res.status).toBe(401);
   });
 
   it("returns 400 when taskId is missing", async () => {

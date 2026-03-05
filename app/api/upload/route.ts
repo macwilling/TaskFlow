@@ -15,7 +15,7 @@ const ALLOWED_MIME_TYPES = new Set([
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 ]);
 
-const MAX_SIZE = 20 * 1024 * 1024; // 20 MB
+const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
 
 function getS3Client() {
   const accountId = process.env.R2_ACCOUNT_ID;
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (file.size > MAX_SIZE) {
-    return NextResponse.json({ error: "File exceeds 20 MB limit" }, { status: 413 });
+    return NextResponse.json({ error: "File exceeds 10 MB limit" }, { status: 413 });
   }
 
   if (!ALLOWED_MIME_TYPES.has(file.type)) {

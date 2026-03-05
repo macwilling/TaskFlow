@@ -8,7 +8,7 @@ interface TopBarProps {
 
 export function TopBar({ title, description, actions }: TopBarProps) {
   return (
-    <div className="flex h-14 items-center justify-between border-b border-border bg-background px-6">
+    <div className="flex h-14 items-center justify-between border-b border-border bg-background px-6 pl-14 md:pl-6">
       <div className="flex flex-col justify-center">
         <h1 className="text-sm font-semibold">{title}</h1>
         {description && (
