@@ -213,6 +213,8 @@ export default async function TaskDetailPage({
   const displayKey = client?.client_key
     ? `${client.client_key}-${task.task_number}`
     : null;
+  const isOverdue =
+    !isClosed && task.due_date && new Date(task.due_date) < new Date();
 
   return (
     <>
@@ -234,103 +236,146 @@ export default async function TaskDetailPage({
       />
 
       <PageContainer>
-        <div className="max-w-4xl space-y-8">
-          {/* Meta panel */}
-          <div className="grid grid-cols-2 gap-6 rounded-md border border-border bg-muted/20 px-5 py-4 text-sm">
-            <dl className="space-y-2">
-              <div className="flex gap-4">
-                <dt className="w-28 shrink-0 text-muted-foreground">Status</dt>
-                <dd>
-                  <TaskStatusControl taskId={taskId} currentStatus={task.status} />
-                </dd>
-              </div>
-              <div className="flex gap-4">
-                <dt className="w-28 shrink-0 text-muted-foreground">Priority</dt>
-                <dd><TaskPriorityBadge priority={task.priority} /></dd>
-              </div>
-              <div className="flex gap-4">
-                <dt className="w-28 shrink-0 text-muted-foreground">Client</dt>
-                <dd className="flex items-center gap-1.5">
-                  {client && (
-                    <>
-                      <span
-                        className="h-2 w-2 shrink-0 rounded-full"
-                        style={{ backgroundColor: client.color ?? "#0969da" }}
-                      />
-                      <Link
-                        href={`/clients/${client.id}`}
-                        className="hover:underline text-foreground"
-                      >
-                        {client.name}
-                      </Link>
-                    </>
-                  )}
-                </dd>
-              </div>
-            </dl>
-            <dl className="space-y-2">
-              <div className="flex gap-4">
-                <dt className="w-28 shrink-0 text-muted-foreground">Task ID</dt>
-                <dd className="font-mono text-xs text-muted-foreground pt-0.5">
-                  {displayKey ?? "—"}
-                </dd>
-              </div>
-              <div className="flex gap-4">
-                <dt className="w-28 shrink-0 text-muted-foreground">Due date</dt>
-                <dd className={task.due_date && !isClosed && new Date(task.due_date) < new Date() ? "text-red-600 dark:text-red-400 font-medium" : "text-foreground"}>
-                  {formatDate(task.due_date)}
-                </dd>
-              </div>
-              <div className="flex gap-4">
-                <dt className="w-28 shrink-0 text-muted-foreground">Est. hours</dt>
-                <dd className="text-foreground">
-                  {task.estimated_hours != null ? `${task.estimated_hours}h` : "—"}
-                </dd>
-              </div>
-              <div className="flex gap-4">
-                <dt className="w-28 shrink-0 text-muted-foreground">Created</dt>
-                <dd className="text-foreground">{formatDate(task.created_at)}</dd>
-              </div>
-              {task.closed_at && (
-                <div className="flex gap-4">
-                  <dt className="w-28 shrink-0 text-muted-foreground">Closed</dt>
-                  <dd className="text-foreground">{formatDate(task.closed_at)}</dd>
-                </div>
-              )}
-            </dl>
+        {/* Two-column split: 70/30 on desktop, stacked on mobile */}
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_320px] lg:items-start lg:gap-8">
+
+          {/* ── Left column: primary content ── */}
+          <div className="min-w-0 space-y-8">
+            {/* Rich text editors (description + resolution notes) */}
+            <TaskEditors
+              taskId={taskId}
+              tenantId={tenantId}
+              description={task.description ?? ""}
+              resolutionNotes={task.resolution_notes ?? ""}
+              isClosed={isClosed}
+            />
+
+            <Separator />
+
+            {/* Comments — streamed */}
+            <Suspense fallback={<CommentsSkeleton />}>
+              <CommentsPanel taskId={taskId} currentUserId={user.id} />
+            </Suspense>
           </div>
 
-          <Separator />
+          {/* ── Right sidebar: metadata + actions ── */}
+          {/* On mobile this renders first (order-first) so it appears above content */}
+          <aside className="order-first lg:order-none lg:sticky lg:top-6 space-y-6 rounded-md border border-border bg-muted/20 px-5 py-5 text-sm">
 
-          {/* Rich text editors (description + resolution notes) */}
-          <TaskEditors
-            taskId={taskId}
-            tenantId={tenantId}
-            description={task.description ?? ""}
-            resolutionNotes={task.resolution_notes ?? ""}
-            isClosed={isClosed}
-          />
+            {/* Status & Priority */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Status &amp; Priority
+              </p>
+              <dl className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <dt className="w-20 shrink-0 text-muted-foreground">Status</dt>
+                  <dd>
+                    <TaskStatusControl taskId={taskId} currentStatus={task.status} />
+                  </dd>
+                </div>
+                <div className="flex items-center gap-3">
+                  <dt className="w-20 shrink-0 text-muted-foreground">Priority</dt>
+                  <dd>
+                    <TaskPriorityBadge priority={task.priority} />
+                  </dd>
+                </div>
+              </dl>
+            </div>
 
-          <Separator />
+            <Separator />
 
-          {/* Attachments — streamed */}
-          <Suspense fallback={<AttachmentsSkeleton />}>
-            <AttachmentsPanel taskId={taskId} tenantId={tenantId} />
-          </Suspense>
+            {/* Attributes */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Attributes
+              </p>
+              <dl className="space-y-2">
+                <div className="flex gap-3">
+                  <dt className="w-20 shrink-0 text-muted-foreground">Task ID</dt>
+                  <dd className="font-mono text-xs text-muted-foreground pt-0.5">
+                    {displayKey ?? "—"}
+                  </dd>
+                </div>
+                <div className="flex gap-3">
+                  <dt className="w-20 shrink-0 text-muted-foreground">Client</dt>
+                  <dd className="flex items-center gap-1.5">
+                    {client && (
+                      <>
+                        <span
+                          className="h-2 w-2 shrink-0 rounded-full"
+                          style={{ backgroundColor: client.color ?? "#0969da" }}
+                        />
+                        <Link
+                          href={`/clients/${client.id}`}
+                          className="hover:underline text-foreground"
+                        >
+                          {client.name}
+                        </Link>
+                      </>
+                    )}
+                  </dd>
+                </div>
+                <div className="flex gap-3">
+                  <dt className="w-20 shrink-0 text-muted-foreground">Created</dt>
+                  <dd className="text-foreground">{formatDate(task.created_at)}</dd>
+                </div>
+                {task.closed_at && (
+                  <div className="flex gap-3">
+                    <dt className="w-20 shrink-0 text-muted-foreground">Closed</dt>
+                    <dd className="text-foreground">{formatDate(task.closed_at)}</dd>
+                  </div>
+                )}
+              </dl>
+            </div>
 
-          <Separator />
+            <Separator />
 
-          {/* Time entries — streamed */}
-          <Suspense fallback={<TimeEntriesSkeleton />}>
-            <TimeEntriesPanel taskId={taskId} clientId={client?.id ?? ""} />
-          </Suspense>
+            {/* Timeline */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Timeline
+              </p>
+              <dl className="space-y-2">
+                <div className="flex gap-3">
+                  <dt className="w-20 shrink-0 text-muted-foreground">Due date</dt>
+                  <dd className={isOverdue ? "text-red-600 dark:text-red-400 font-medium" : "text-foreground"}>
+                    {formatDate(task.due_date)}
+                  </dd>
+                </div>
+                <div className="flex gap-3">
+                  <dt className="w-20 shrink-0 text-muted-foreground">Est. hours</dt>
+                  <dd className="text-foreground">
+                    {task.estimated_hours != null ? `${task.estimated_hours}h` : "—"}
+                  </dd>
+                </div>
+              </dl>
+            </div>
 
-          <Separator />
+            <Separator />
 
-          {/* Comments — streamed */}
-          <Suspense fallback={<CommentsSkeleton />}>
-            <CommentsPanel taskId={taskId} currentUserId={user.id} />
-          </Suspense>
+            {/* Time tracking — streamed */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Time tracking
+              </p>
+              <Suspense fallback={<TimeEntriesSkeleton />}>
+                <TimeEntriesPanel taskId={taskId} clientId={client?.id ?? ""} />
+              </Suspense>
+            </div>
+
+            <Separator />
+
+            {/* Attachments — streamed */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Attachments
+              </p>
+              <Suspense fallback={<AttachmentsSkeleton />}>
+                <AttachmentsPanel taskId={taskId} tenantId={tenantId} />
+              </Suspense>
+            </div>
+          </aside>
         </div>
       </PageContainer>
     </>
