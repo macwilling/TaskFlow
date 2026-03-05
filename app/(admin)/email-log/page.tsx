@@ -30,8 +30,8 @@ export default async function EmailLogPage() {
 
   const { data: logs, error } = await supabase
     .from("email_log")
-    .select("id, created_at, type, to_email, subject, status, resend_id, error_message")
-    .order("created_at", { ascending: false })
+    .select("id, sent_at, type, to_email, subject, status, resend_id, error_message")
+    .order("sent_at", { ascending: false })
     .limit(200);
 
   return (
@@ -64,7 +64,7 @@ export default async function EmailLogPage() {
                 {logs.map((log) => (
                   <tr key={log.id} className="hover:bg-muted/20 transition-colors">
                     <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap tabular-nums">
-                      {formatDate(log.created_at)}
+                      {formatDate(log.sent_at)}
                     </td>
                     <td className="px-4 py-3">
                       <span className="text-xs text-muted-foreground">
