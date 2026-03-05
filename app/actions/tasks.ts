@@ -93,6 +93,37 @@ export async function createTaskAction(
   redirect(`/tasks/${slug}`);
 }
 
+// ─── Update title (inline edit) ──────────────────────────────────────────────
+
+export async function updateTaskTitleAction(
+  taskId: string,
+  title: string
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user || user.app_metadata?.role !== "admin") {
+    return { error: "Unauthorized." };
+  }
+
+  const trimmed = title.trim();
+  if (!trimmed) return { error: "Title is required." };
+
+  const { error } = await supabase
+    .from("tasks")
+    .update({ title: trimmed })
+    .eq("id", taskId);
+
+  if (error) return { error: error.message };
+
+  const slug = await getTaskSlug(supabase, taskId);
+  revalidatePath(`/tasks/${slug}`);
+  revalidatePath("/tasks");
+  return {};
+}
+
 // ─── Update metadata ──────────────────────────────────────────────────────────
 
 export async function updateTaskMetaAction(

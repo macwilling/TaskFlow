@@ -7,8 +7,9 @@ import { PageContainer } from "@/components/layout/PageContainer";
 import { Separator } from "@/components/ui/separator";
 import { TaskStatusControl } from "@/components/tasks/TaskStatusControl";
 import { TaskPriorityBadge } from "@/components/tasks/TaskStatusBadge";
-import { CloseTaskDialog } from "@/components/tasks/CloseTaskDialog";
 import { TaskEditors } from "@/components/tasks/TaskEditors";
+import { TaskTitleEditor } from "@/components/tasks/TaskTitleEditor";
+import { DeleteTaskButton } from "@/components/tasks/DeleteTaskButton";
 import { AttachmentsList } from "@/components/tasks/AttachmentsList";
 import { CommentThread } from "@/components/comments/CommentThread";
 import { TaskTimeEntries } from "@/components/time/TaskTimeEntries";
@@ -219,19 +220,12 @@ export default async function TaskDetailPage({
   return (
     <>
       <TopBar
-        title={task.title}
-        description={
-          displayKey && client
-            ? `${displayKey} · ${client.name}`
-            : client?.name
-        }
+        breadcrumbs={[
+          { label: "Tasks", href: "/tasks" },
+          { label: displayKey ?? task.title },
+        ]}
         actions={
-          !isClosed && (
-            <CloseTaskDialog
-              taskId={taskId}
-              currentResolutionNotes={task.resolution_notes ?? ""}
-            />
-          )
+          <DeleteTaskButton taskId={taskId} taskKey={displayKey ?? taskId} />
         }
       />
 
@@ -241,6 +235,13 @@ export default async function TaskDetailPage({
 
           {/* ── Left column: primary content ── */}
           <div className="min-w-0 space-y-8">
+            {/* Editable title */}
+            <TaskTitleEditor
+              taskId={taskId}
+              initialTitle={task.title}
+              disabled={isClosed}
+            />
+
             {/* Rich text editors (description + resolution notes) */}
             <TaskEditors
               taskId={taskId}
@@ -271,7 +272,11 @@ export default async function TaskDetailPage({
                 <div className="flex items-center gap-3">
                   <dt className="w-20 shrink-0 text-muted-foreground">Status</dt>
                   <dd>
-                    <TaskStatusControl taskId={taskId} currentStatus={task.status} />
+                    <TaskStatusControl
+                      taskId={taskId}
+                      currentStatus={task.status}
+                      currentResolutionNotes={task.resolution_notes ?? ""}
+                    />
                   </dd>
                 </div>
                 <div className="flex items-center gap-3">

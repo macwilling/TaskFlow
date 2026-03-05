@@ -18,13 +18,25 @@ import { CheckSquare } from "lucide-react";
 interface CloseTaskDialogProps {
   taskId: string;
   currentResolutionNotes: string;
+  /** Controlled mode: open state managed by parent */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function CloseTaskDialog({ taskId, currentResolutionNotes }: CloseTaskDialogProps) {
-  const [open, setOpen] = useState(false);
+export function CloseTaskDialog({
+  taskId,
+  currentResolutionNotes,
+  open: controlledOpen,
+  onOpenChange,
+}: CloseTaskDialogProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
   const [notes, setNotes] = useState(currentResolutionNotes);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = isControlled ? (onOpenChange ?? (() => {})) : setInternalOpen;
 
   function handleClose() {
     setError(null);
@@ -40,12 +52,14 @@ export function CloseTaskDialog({ taskId, currentResolutionNotes }: CloseTaskDia
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" className="h-7 gap-1 text-xs">
-          <CheckSquare className="h-3.5 w-3.5" />
-          Close task
-        </Button>
-      </DialogTrigger>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          <Button size="sm" className="h-7 gap-1 text-xs">
+            <CheckSquare className="h-3.5 w-3.5" />
+            Close task
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Close this task</DialogTitle>
