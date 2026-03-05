@@ -3,7 +3,24 @@
 import { useRef, useState, useTransition } from "react";
 import { deleteAttachmentAction, saveAttachmentAction } from "@/app/actions/tasks";
 import { Button } from "@/components/ui/button";
-import { Paperclip, Trash2, Upload, FileText } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Paperclip,
+  Trash2,
+  Upload,
+  File,
+  FileText,
+  FileArchive,
+  FileCode,
+  FileVideo,
+  FileAudio,
+  Download,
+  X,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface Attachment {
@@ -21,6 +38,40 @@ interface AttachmentsListProps {
   attachments: Attachment[];
 }
 
+function isImage(mimeType: string | null): boolean {
+  return !!mimeType && (
+    mimeType.startsWith("image/png") ||
+    mimeType.startsWith("image/jpeg") ||
+    mimeType.startsWith("image/webp") ||
+    mimeType.startsWith("image/gif")
+  );
+}
+
+function FileIcon({ mimeType }: { mimeType: string | null }) {
+  if (!mimeType) return <File className="h-6 w-6 text-muted-foreground" />;
+  if (mimeType === "application/pdf") return <FileText className="h-6 w-6 text-red-500" />;
+  if (mimeType.includes("zip") || mimeType.includes("archive") || mimeType.includes("tar") || mimeType.includes("gzip")) {
+    return <FileArchive className="h-6 w-6 text-yellow-500" />;
+  }
+  if (mimeType.startsWith("video/")) return <FileVideo className="h-6 w-6 text-purple-500" />;
+  if (mimeType.startsWith("audio/")) return <FileAudio className="h-6 w-6 text-blue-500" />;
+  if (mimeType.includes("javascript") || mimeType.includes("json") || mimeType.includes("html") || mimeType.includes("css") || mimeType.includes("xml")) {
+    return <FileCode className="h-6 w-6 text-green-500" />;
+  }
+  return <FileText className="h-6 w-6 text-muted-foreground" />;
+}
+
+function truncateFilename(name: string, maxLength = 18): string {
+  if (name.length <= maxLength) return name;
+  const dotIdx = name.lastIndexOf(".");
+  if (dotIdx > 0 && name.length - dotIdx <= 6) {
+    const ext = name.slice(dotIdx);
+    const base = name.slice(0, maxLength - ext.length - 1);
+    return `${base}…${ext}`;
+  }
+  return name.slice(0, maxLength - 1) + "…";
+}
+
 function formatBytes(bytes: number | null): string {
   if (!bytes) return "";
   if (bytes < 1024) return `${bytes} B`;
@@ -34,6 +85,8 @@ export function AttachmentsList({ taskId, tenantId, attachments }: AttachmentsLi
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [lightboxName, setLightboxName] = useState<string>("");
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -58,7 +111,6 @@ export function AttachmentsList({ taskId, tenantId, attachments }: AttachmentsLi
 
       const { url, key } = await res.json() as { url: string; key: string };
 
-      // Record the attachment in DB via server action
       const saveResult = await saveAttachmentAction({
         taskId,
         tenantId,
@@ -88,6 +140,11 @@ export function AttachmentsList({ taskId, tenantId, attachments }: AttachmentsLi
     startTransition(async () => {
       await deleteAttachmentAction(attachmentId, taskId);
     });
+  }
+
+  function openLightbox(a: Attachment) {
+    setLightboxUrl(a.public_url);
+    setLightboxName(a.file_name);
   }
 
   return (
@@ -124,36 +181,107 @@ export function AttachmentsList({ taskId, tenantId, attachments }: AttachmentsLi
           No attachments yet
         </div>
       ) : (
-        <ul className="divide-y divide-border rounded-md border border-border">
+        <div className="grid grid-cols-3 gap-2">
           {attachments.map((a) => (
-            <li key={a.id} className="flex items-center gap-3 px-3 py-2.5 text-sm">
-              <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <a
-                href={a.public_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 truncate text-foreground hover:underline"
-              >
-                {a.file_name}
-              </a>
-              {a.file_size && (
-                <span className="text-xs text-muted-foreground shrink-0">
-                  {formatBytes(a.file_size)}
-                </span>
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
-                onClick={() => handleDelete(a.id)}
-                disabled={isPending}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            </li>
+            <div
+              key={a.id}
+              className="group relative flex flex-col rounded-md border border-border bg-muted/20 overflow-hidden"
+            >
+              {/* Thumbnail or file icon */}
+              <div className="relative h-16 w-full bg-muted/30 flex items-center justify-center overflow-hidden">
+                {isImage(a.mime_type) ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={a.public_url}
+                    alt={a.file_name}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <FileIcon mimeType={a.mime_type} />
+                )}
+
+                {/* Hover overlay with actions */}
+                <div className="absolute inset-0 flex items-center justify-center gap-1 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {isImage(a.mime_type) && (
+                    <button
+                      type="button"
+                      className="flex h-6 w-6 items-center justify-center rounded bg-white/20 text-white hover:bg-white/30 transition-colors"
+                      onClick={() => openLightbox(a)}
+                      title="Preview"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-3 w-3"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+                      </svg>
+                    </button>
+                  )}
+                  <a
+                    href={a.public_url}
+                    download={a.file_name}
+                    className="flex h-6 w-6 items-center justify-center rounded bg-white/20 text-white hover:bg-white/30 transition-colors"
+                    title="Download"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Download className="h-3 w-3" />
+                  </a>
+                  <button
+                    type="button"
+                    className="flex h-6 w-6 items-center justify-center rounded bg-white/20 text-white hover:bg-red-500/80 transition-colors"
+                    onClick={() => handleDelete(a.id)}
+                    disabled={isPending}
+                    title="Delete"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Filename + size */}
+              <div className="px-1.5 py-1">
+                <p
+                  className="text-[10px] leading-tight text-foreground truncate"
+                  title={a.file_name}
+                >
+                  {truncateFilename(a.file_name)}
+                </p>
+                {a.file_size && (
+                  <p className="text-[9px] text-muted-foreground">
+                    {formatBytes(a.file_size)}
+                  </p>
+                )}
+              </div>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
+
+      {/* Lightbox */}
+      <Dialog open={!!lightboxUrl} onOpenChange={(open) => { if (!open) setLightboxUrl(null); }}>
+        <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black/90 border-0">
+          <DialogTitle className="sr-only">{lightboxName}</DialogTitle>
+          <div className="relative flex items-center justify-center min-h-[60vh]">
+            {lightboxUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={lightboxUrl}
+                alt={lightboxName}
+                className="max-h-[85vh] max-w-full object-contain"
+              />
+            )}
+          </div>
+          <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-4 py-2 text-xs text-white/80">
+            {lightboxName}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
