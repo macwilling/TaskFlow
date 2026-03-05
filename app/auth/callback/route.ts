@@ -208,7 +208,7 @@ export async function GET(request: NextRequest) {
   });
 
   await admin.auth.admin.updateUserById(user.id, {
-    app_metadata: { role: "admin", tenant_id: tenantId },
+    app_metadata: { role: "admin", tenant_id: tenantId, tenant_slug: slug },
   });
 
   return NextResponse.redirect(`${origin}${next}`);

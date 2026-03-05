@@ -30,7 +30,9 @@ async function buildMinimalInvoice(
   const { dueDate, unitPrice = 100, quantity = 2 } = opts;
 
   await page.goto("/invoices/new");
-  await page.waitForLoadState("networkidle");
+  // Wait for the client dropdown to be interactive instead of networkidle,
+  // which is unreliable under concurrent test load.
+  await page.locator('[id="client_id"]').waitFor({ state: "visible", timeout: 30_000 });
 
   // Select the first available client from the dropdown
   await page.locator('[id="client_id"]').click();

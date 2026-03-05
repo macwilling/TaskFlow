@@ -46,6 +46,11 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(new URL("/auth/login", request.url));
     }
     if (user.app_metadata?.role !== "admin") {
+      // Authenticated client users should land on their portal, not the login page
+      const tenantSlug = user.app_metadata?.tenant_slug as string | undefined;
+      if (tenantSlug) {
+        return NextResponse.redirect(new URL(`/portal/${tenantSlug}`, request.url));
+      }
       return NextResponse.redirect(new URL("/auth/login", request.url));
     }
     return supabaseResponse;

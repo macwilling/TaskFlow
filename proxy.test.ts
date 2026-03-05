@@ -67,10 +67,16 @@ describe("proxy: admin routes", () => {
     }
   });
 
-  it("redirects client role to /auth/login", async () => {
+  it("redirects client role without tenant_slug to /auth/login", async () => {
     mockSession({ id: "u1", app_metadata: { role: "client" } });
     const res = await proxy(makeRequest("/dashboard"));
     expect(res.headers.get("location")).toContain("/auth/login");
+  });
+
+  it("redirects client role with tenant_slug to their portal", async () => {
+    mockSession({ id: "u1", app_metadata: { role: "client", tenant_slug: "acme" } });
+    const res = await proxy(makeRequest("/dashboard"));
+    expect(res.headers.get("location")).toContain("/portal/acme");
   });
 
   it("passes through for admin role", async () => {

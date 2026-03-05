@@ -86,9 +86,9 @@ export async function POST(request: NextRequest) {
 
     if (settingsError) throw new Error(settingsError.message);
 
-    // Set app_metadata so middleware can read role + tenant_id from JWT
+    // Set app_metadata so middleware can read role + tenant_id + tenant_slug from JWT
     const { error: metaError } = await admin.auth.admin.updateUserById(userId, {
-      app_metadata: { role: "admin", tenant_id: tenantId },
+      app_metadata: { role: "admin", tenant_id: tenantId, tenant_slug: slug },
     });
 
     if (metaError) throw new Error(metaError.message);

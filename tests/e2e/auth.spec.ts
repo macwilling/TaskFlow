@@ -128,7 +128,7 @@ seedTest.describe("magic link", () => {
     }
 
     await page.getByLabel(/email/i).fill(seed.adminEmail);
-    await page.getByRole("button", { name: /send.*link|magic link/i }).click();
+    await page.getByRole("button", { name: /send.*link|magic link|email me/i }).click();
 
     await expect(
       page.getByText(/check your email|link sent|sent/i)

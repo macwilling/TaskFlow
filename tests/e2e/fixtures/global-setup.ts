@@ -179,8 +179,29 @@ export default async function globalSetup() {
   // Uses the admin user's own tenant so no extra tenant creation is needed.
   const adminUserId = tokenData.user.id;
   const adminMeta = tokenData.user.app_metadata ?? {};
-  const tenantId = adminMeta.tenant_id as string | undefined;
-  const tenantSlug = adminMeta.tenant_slug as string | undefined;
+  let tenantId = adminMeta.tenant_id as string | undefined;
+  let tenantSlug = adminMeta.tenant_slug as string | undefined;
+
+  const admin = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+
+  // If tenant_slug is absent (users registered before it was added to app_metadata),
+  // look it up from the DB and patch app_metadata so portal tests can run.
+  if (tenantId && !tenantSlug) {
+    const { data: tenantRow } = await admin
+      .from("tenants")
+      .select("slug")
+      .eq("id", tenantId)
+      .single();
+    if (tenantRow?.slug) {
+      tenantSlug = tenantRow.slug;
+      await admin.auth.admin.updateUserById(adminUserId, {
+        app_metadata: { ...adminMeta, tenant_slug: tenantSlug },
+      });
+      console.log(`✓ Patched tenant_slug "${tenantSlug}" into admin app_metadata.`);
+    }
+  }
 
   if (!tenantId || !tenantSlug) {
     console.warn(
@@ -190,10 +211,6 @@ export default async function globalSetup() {
     fs.writeFileSync(path.join(authDir, "client.json"), JSON.stringify({ cookies: [], origins: [] }));
     return;
   }
-
-  const admin = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
 
   const ts = Date.now();
   const clientEmail = `e2e-client-${ts}@test.taskflow.dev`;
@@ -220,7 +237,7 @@ export default async function globalSetup() {
       tenant_id: tenantId,
       client_id: clientId,
       title: "E2E Test Task",
-      status: "open",
+      status: "backlog",
       priority: "medium",
       task_number: 9001,
     })
