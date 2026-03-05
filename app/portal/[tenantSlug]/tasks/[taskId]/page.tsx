@@ -4,6 +4,8 @@ import { Separator } from "@/components/ui/separator";
 import { TaskStatusBadge, TaskPriorityBadge } from "@/components/tasks/TaskStatusBadge";
 import { CommentThread } from "@/components/comments/CommentThread";
 import { PortalReadOnlyEditor } from "@/components/portal/PortalTaskContent";
+import { TaskAuditLog } from "@/components/tasks/TaskAuditLog";
+import type { AuditEntry } from "@/components/tasks/TaskAuditLog";
 
 function formatDate(d: string | null) {
   if (!d) return "—";
@@ -42,6 +44,13 @@ export default async function PortalTaskPage({
     .select("id, body, author_role, author_id, created_at")
     .eq("task_id", taskId)
     .order("created_at", { ascending: true });
+
+  // Fetch audit log — RLS client_audit_log_select filters to non-sensitive events
+  const { data: auditEntries } = await supabase
+    .from("task_audit_log")
+    .select("id, actor_role, event_type, old_value, new_value, metadata, created_at")
+    .eq("task_id", taskId)
+    .order("created_at", { ascending: false });
 
   const isClosed = task.status === "closed";
 
@@ -126,6 +135,16 @@ export default async function PortalTaskPage({
         currentUserId={user.id}
         comments={comments ?? []}
       />
+
+      <Separator />
+
+      {/* Activity log (filtered by RLS to non-sensitive events) */}
+      <div className="space-y-3">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Activity
+        </h2>
+        <TaskAuditLog entries={(auditEntries ?? []) as AuditEntry[]} />
+      </div>
     </div>
   );
 }
