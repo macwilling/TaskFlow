@@ -24,7 +24,7 @@ vi.mock("@aws-sdk/client-s3", () => ({
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-const MAX_SIZE = 20 * 1024 * 1024;
+const MAX_SIZE = 10 * 1024 * 1024;
 
 /**
  * Creates a NextRequest whose formData() is patched to avoid jsdom/undici
@@ -135,7 +135,7 @@ describe("POST /api/upload", () => {
     expect(json.error).toMatch(/no file/i);
   });
 
-  it("returns 413 when file exceeds 20 MB", async () => {
+  it("returns 413 when file exceeds 10 MB", async () => {
     mockGetUser.mockResolvedValueOnce({ data: { user: authenticatedUser } });
 
     const { POST } = await import("./route");
@@ -147,7 +147,7 @@ describe("POST /api/upload", () => {
     );
     expect(res.status).toBe(413);
     const json = await res.json();
-    expect(json.error).toMatch(/20 mb/i);
+    expect(json.error).toMatch(/10 mb/i);
   });
 
   it("returns 415 when file type is not allowed", async () => {

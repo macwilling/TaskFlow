@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { LogOut } from "lucide-react";
+import { ThemeToggle } from "./ThemeToggle";
 
 interface UserMenuProps {
   email: string;
@@ -27,6 +28,7 @@ export function UserMenu({ email, name }: UserMenuProps) {
         )}
         <p className="truncate text-xs text-muted-foreground">{email}</p>
       </div>
+      <ThemeToggle />
       <button
         onClick={handleSignOut}
         className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
