@@ -3,11 +3,12 @@ export default function Loading() {
     <>
       {/* TopBar skeleton */}
       <div className="flex h-14 items-center justify-between border-b border-border px-6">
-        <div className="space-y-1.5">
-          <div className="h-4 w-48 rounded bg-muted animate-pulse" />
-          <div className="h-3 w-24 rounded bg-muted/50 animate-pulse" />
+        <div className="flex items-center gap-1.5">
+          <div className="h-3.5 w-10 rounded bg-muted/50 animate-pulse" />
+          <div className="h-3 w-3 rounded bg-muted/30 animate-pulse" />
+          <div className="h-3.5 w-16 rounded bg-muted animate-pulse" />
         </div>
-        <div className="h-7 w-24 rounded bg-muted/50 animate-pulse" />
+        <div className="h-7 w-16 rounded bg-muted/50 animate-pulse" />
       </div>
 
       {/* Content skeleton */}

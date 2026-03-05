@@ -162,19 +162,39 @@ For FullCalendar specifically, also call `calendarRef.current?.getApi().refetchE
 
 ---
 
-## TopBar actions slot
+## TopBar — breadcrumbs (preferred for detail/edit pages)
+
+Use `breadcrumbs` instead of `title`/`description` on any page that sits below a list page. The last breadcrumb is the current page (non-linked, bold); earlier ones are links.
+
+```tsx
+<TopBar
+  breadcrumbs={[
+    { label: "Tasks", href: "/tasks" },
+    { label: "AC-42" },          // current page — no href
+  ]}
+  actions={<DeleteTaskButton ... />}
+/>
+```
+
+Naming convention by section:
+- Tasks detail/edit: `Tasks > AC-42`
+- Client detail: `Clients > Acme Corp`
+- Client edit: `Clients > Acme Corp > Edit`
+- Invoice detail/edit: `Invoices > INV-001`
+
+Top-level list pages (Tasks, Clients, Invoices…) continue to use `title` + optional `actions` — no breadcrumbs needed.
+
+## TopBar — title/description (top-level list pages)
 
 ```tsx
 <TopBar
   title="Page title"
   description="Optional subtitle"
   actions={
-    <div className="flex items-center gap-2">
-      <Button size="sm" className="h-7 gap-1 text-xs">
-        <PlusIcon className="h-3.5 w-3.5" />
-        New item
-      </Button>
-    </div>
+    <Button size="sm" className="h-7 gap-1 text-xs">
+      <PlusIcon className="h-3.5 w-3.5" />
+      New item
+    </Button>
   }
 />
 ```
