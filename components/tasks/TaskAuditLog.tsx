@@ -9,6 +9,8 @@ import {
   Pencil,
   Trash2,
   PlusCircle,
+  AlignLeft,
+  StickyNote,
 } from "lucide-react";
 
 export interface AuditEntry {
@@ -57,6 +59,10 @@ function EntryIcon({ eventType }: { eventType: string }) {
       return <CheckCircle2 className={cls} />;
     case "title_changed":
       return <Pencil className={cls} />;
+    case "description_changed":
+      return <AlignLeft className={cls} />;
+    case "resolution_notes_changed":
+      return <StickyNote className={cls} />;
     case "comment_added":
       return <MessageSquare className={cls} />;
     case "attachment_added":
@@ -80,6 +86,10 @@ function entryDescription(entry: AuditEntry): string {
     }
     case "title_changed":
       return `${actor} renamed this task`;
+    case "description_changed":
+      return `${actor} updated the description`;
+    case "resolution_notes_changed":
+      return `${actor} updated the resolution notes`;
     case "comment_added":
       return `${actor} left a comment`;
     case "attachment_added": {

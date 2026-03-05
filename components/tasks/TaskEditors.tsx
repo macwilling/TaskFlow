@@ -1,8 +1,9 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { updateTaskContentAction } from "@/app/actions/tasks";
+import { Button } from "@/components/ui/button";
 
 const MilkdownEditor = dynamic(
   () => import("@/components/editor/MilkdownEditor"),
@@ -17,7 +18,7 @@ interface TaskEditorsProps {
   isClosed: boolean;
 }
 
-function AutoSaveEditor({
+function SaveCancelEditor({
   taskId,
   field,
   initialValue,
@@ -32,27 +33,55 @@ function AutoSaveEditor({
   placeholder?: string;
   readOnly?: boolean;
 }) {
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+  // editorKey forces Milkdown to remount (and reset to savedValue) on cancel
+  const [editorKey, setEditorKey] = useState(0);
+  // savedValue tracks the last persisted value (may differ from SSR initialValue after a save)
+  const savedValue = useRef(initialValue);
+  const currentValue = useRef(initialValue);
 
-  const handleChange = useCallback(
-    (value: string) => {
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(async () => {
-        await updateTaskContentAction(taskId, field, value);
-      }, 1000);
-    },
-    [taskId, field]
-  );
+  const handleChange = useCallback((value: string) => {
+    currentValue.current = value;
+    setDirty(true);
+  }, []);
+
+  const handleSave = useCallback(async () => {
+    setSaving(true);
+    await updateTaskContentAction(taskId, field, currentValue.current);
+    savedValue.current = currentValue.current;
+    setSaving(false);
+    setDirty(false);
+  }, [taskId, field]);
+
+  const handleCancel = useCallback(() => {
+    currentValue.current = savedValue.current;
+    setEditorKey((k) => k + 1);
+    setDirty(false);
+  }, []);
 
   return (
-    <MilkdownEditor
-      value={initialValue}
-      onChange={readOnly ? undefined : handleChange}
-      uploadPath={readOnly ? undefined : uploadPath}
-      placeholder={placeholder}
-      readOnly={readOnly}
-      minHeight="140px"
-    />
+    <div className="space-y-2">
+      <MilkdownEditor
+        key={editorKey}
+        value={savedValue.current}
+        onChange={readOnly ? undefined : handleChange}
+        uploadPath={readOnly ? undefined : uploadPath}
+        placeholder={placeholder}
+        readOnly={readOnly}
+        minHeight="140px"
+      />
+      {dirty && !readOnly && (
+        <div className="flex items-center gap-2">
+          <Button size="sm" onClick={handleSave} disabled={saving}>
+            {saving ? "Saving…" : "Save"}
+          </Button>
+          <Button size="sm" variant="ghost" onClick={handleCancel} disabled={saving}>
+            Cancel
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -71,7 +100,7 @@ export function TaskEditors({
         <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Description
         </h2>
-        <AutoSaveEditor
+        <SaveCancelEditor
           taskId={taskId}
           field="description"
           initialValue={description}
@@ -85,7 +114,7 @@ export function TaskEditors({
         <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Resolution notes
         </h2>
-        <AutoSaveEditor
+        <SaveCancelEditor
           taskId={taskId}
           field="resolution_notes"
           initialValue={resolutionNotes}
