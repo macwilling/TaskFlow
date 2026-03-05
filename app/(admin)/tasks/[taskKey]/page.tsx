@@ -13,6 +13,8 @@ import { DeleteTaskButton } from "@/components/tasks/DeleteTaskButton";
 import { AttachmentsList } from "@/components/tasks/AttachmentsList";
 import { CommentThread } from "@/components/comments/CommentThread";
 import { TaskTimeEntries } from "@/components/time/TaskTimeEntries";
+import { TaskAuditLog } from "@/components/tasks/TaskAuditLog";
+import type { AuditEntry } from "@/components/tasks/TaskAuditLog";
 
 function formatDate(d: string | null) {
   if (!d) return "—";
@@ -109,7 +111,34 @@ async function CommentsPanel({
   );
 }
 
+async function AuditLogPanel({ taskId }: { taskId: string }) {
+  const supabase = await createClient();
+  const { data: entries } = await supabase
+    .from("task_audit_log")
+    .select("id, actor_role, event_type, old_value, new_value, metadata, created_at")
+    .eq("task_id", taskId)
+    .order("created_at", { ascending: false });
+
+  return <TaskAuditLog entries={(entries ?? []) as AuditEntry[]} />;
+}
+
 // ─── Skeleton fallbacks ────────────────────────────────────────────────────────
+
+function AuditLogSkeleton() {
+  return (
+    <div className="space-y-1">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="flex gap-3 py-2.5">
+          <div className="h-5 w-5 shrink-0 rounded-full bg-muted animate-pulse" />
+          <div className="flex-1 space-y-1">
+            <div className="h-3 w-3/4 rounded bg-muted animate-pulse" />
+            <div className="h-2.5 w-24 rounded bg-muted/60 animate-pulse" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function AttachmentsSkeleton() {
   return (
@@ -257,6 +286,18 @@ export default async function TaskDetailPage({
             <Suspense fallback={<CommentsSkeleton />}>
               <CommentsPanel taskId={taskId} currentUserId={user.id} />
             </Suspense>
+
+            <Separator />
+
+            {/* Activity log — streamed */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Activity
+              </h3>
+              <Suspense fallback={<AuditLogSkeleton />}>
+                <AuditLogPanel taskId={taskId} />
+              </Suspense>
+            </div>
           </div>
 
           {/* ── Right sidebar: metadata + actions ── */}

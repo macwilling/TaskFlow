@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { logTaskEvent } from "@/app/actions/audit";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -327,6 +328,17 @@ export async function saveAttachmentAction(params: {
 
   if (error) return { error: error.message };
 
+  // Fire-and-forget audit log
+  void logTaskEvent({
+    tenantId: params.tenantId,
+    taskId: params.taskId,
+    actorId: user.id,
+    actorRole: "admin",
+    eventType: "attachment_added",
+    newValue: params.fileName,
+    metadata: { file_name: params.fileName, file_size: params.fileSize, mime_type: params.mimeType },
+  });
+
   const slug = await getTaskSlug(supabase, params.taskId);
   revalidatePath(`/tasks/${slug}`);
   return {};
@@ -347,12 +359,31 @@ export async function deleteAttachmentAction(
     return { error: "Unauthorized." };
   }
 
+  // Fetch before delete so we can log the file name
+  const { data: attachment } = await supabase
+    .from("task_attachments")
+    .select("tenant_id, file_name")
+    .eq("id", attachmentId)
+    .single();
+
   const { error } = await supabase
     .from("task_attachments")
     .delete()
     .eq("id", attachmentId);
 
   if (error) return { error: error.message };
+
+  if (attachment) {
+    void logTaskEvent({
+      tenantId: attachment.tenant_id,
+      taskId,
+      actorId: user.id,
+      actorRole: "admin",
+      eventType: "attachment_deleted",
+      oldValue: attachment.file_name,
+      metadata: { file_name: attachment.file_name },
+    });
+  }
 
   const slug = await getTaskSlug(supabase, taskId);
   revalidatePath(`/tasks/${slug}`);

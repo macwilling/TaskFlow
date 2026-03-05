@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { logTaskEvent } from "@/app/actions/audit";
 
 async function getTaskSlug(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -56,6 +57,16 @@ export async function createCommentAction(
     .single();
 
   if (error) return { error: error.message };
+
+  // Fire-and-forget audit log
+  void logTaskEvent({
+    tenantId: profile.tenant_id,
+    taskId,
+    actorId: user.id,
+    actorRole: profile.role as "admin" | "client",
+    eventType: "comment_added",
+    metadata: { snippet: body.slice(0, 120) },
+  });
 
   const slug = await getTaskSlug(supabase, taskId);
   revalidatePath(`/tasks/${slug}`);
