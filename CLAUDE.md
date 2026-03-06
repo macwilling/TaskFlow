@@ -18,6 +18,8 @@ npm run test:e2e   # Playwright E2E tests (requires dev server running)
 
 **Parallel work:** each task or issue group is developed in its own git worktree on a dedicated branch, then merged via PR. When starting a new task, work in a worktree unless told otherwise.
 
+**PR workflow on sign-off:** When the user declares that a feature or fix is ready (e.g. "ready to go", "ship it", "looks good"), immediately and without asking for extra permissions: (1) create a branch if not already on one, (2) commit all changes, (3) push, (4) open a PR on GitHub. Return the PR URL as the final step. Never wait for a separate "go ahead to push" — sign-off is the trigger.
+
 ## Architecture
 
 ### Framework quirks (Next.js 16)
