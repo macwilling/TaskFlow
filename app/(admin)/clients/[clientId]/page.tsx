@@ -4,11 +4,14 @@ import { createClient } from "@/lib/supabase/server";
 import { TopBar } from "@/components/layout/TopBar";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { ArchiveClientButton } from "@/components/clients/ArchiveClientButton";
+import { ClientQuickActions } from "@/components/clients/ClientQuickActions";
 import { PortalAccessSection } from "@/components/portal/PortalAccessSection";
+import { TaskStatusBadge, TaskPriorityBadge } from "@/components/tasks/TaskStatusBadge";
+import { InvoiceStatusBadge } from "@/components/invoices/InvoiceStatusBadge";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Pencil, CheckSquare, Clock, FileText } from "lucide-react";
+import { Pencil } from "lucide-react";
 
 function InfoRow({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null;
@@ -20,6 +23,22 @@ function InfoRow({ label, value }: { label: string; value?: string | null }) {
   );
 }
 
+function formatDate(d: string | null) {
+  if (!d) return "—";
+  return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function formatCurrency(n: number, currency = "USD") {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(n);
+}
+
+function effectiveInvoiceStatus(status: string, dueDate: string | null) {
+  if (status === "paid") return "paid";
+  if (dueDate && new Date(dueDate) < new Date() && status !== "draft") return "overdue";
+  return status;
+}
+
+
 export default async function ClientDetailPage({
   params,
 }: {
@@ -28,13 +47,34 @@ export default async function ClientDetailPage({
   const { clientId } = await params;
   const supabase = await createClient();
 
-  const [{ data: client, error }, { data: portalAccess }] = await Promise.all([
+  const [
+    { data: client, error },
+    { data: portalAccess },
+    { data: tasks },
+    { data: timeEntries },
+    { data: invoices },
+  ] = await Promise.all([
     supabase.from("clients").select("*").eq("id", clientId).single(),
     supabase
       .from("client_portal_access")
       .select("accepted_at")
       .eq("client_id", clientId)
       .maybeSingle(),
+    supabase
+      .from("tasks")
+      .select("id, title, status, priority, due_date, task_number")
+      .eq("client_id", clientId)
+      .neq("status", "closed")
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("time_entries")
+      .select("duration_hours, billable, billed, hourly_rate")
+      .eq("client_id", clientId),
+    supabase
+      .from("invoices")
+      .select("id, invoice_number, issue_date, due_date, total, status, amount_paid")
+      .eq("client_id", clientId)
+      .order("issue_date", { ascending: false }),
   ]);
 
   if (error || !client) notFound();
@@ -49,6 +89,33 @@ export default async function ClientDetailPage({
     [addr?.city, addr?.state, addr?.postal_code].filter(Boolean).join(", "),
     addr?.country,
   ].filter(Boolean).join("\n");
+
+  // Time summary
+  type TimeEntry = { duration_hours: number | string; billable: boolean; billed: boolean; hourly_rate: number | string | null };
+  const entries: TimeEntry[] = timeEntries ?? [];
+  const totalHours = entries.reduce((s: number, e: TimeEntry) => s + Number(e.duration_hours), 0);
+  const billableHours = entries.reduce((s: number, e: TimeEntry) => e.billable ? s + Number(e.duration_hours) : s, 0);
+  const unbilledHours = entries.reduce((s: number, e: TimeEntry) => (e.billable && !e.billed) ? s + Number(e.duration_hours) : s, 0);
+  const unbilledValue = entries.reduce((s: number, e: TimeEntry) =>
+    (e.billable && !e.billed) ? s + Number(e.duration_hours) * Number(e.hourly_rate ?? 0) : s, 0
+  );
+
+  // Invoice outstanding balance
+  type Invoice = { id: string; invoice_number: string; issue_date: string; due_date: string | null; total: number | string | null; status: string; amount_paid: number | string | null };
+  const invoiceList: Invoice[] = invoices ?? [];
+  const outstandingBalance = invoiceList
+    .filter((inv: Invoice) => inv.status !== "paid" && inv.status !== "draft")
+    .reduce((s: number, inv: Invoice) => s + (Number(inv.total ?? 0) - Number(inv.amount_paid ?? 0)), 0);
+
+  // client_key for task links (all tasks share the same client)
+  const clientKey = (client as unknown as { client_key: string | null }).client_key;
+
+  // Tasks for the quick action modal (already fetched above, flatten client_key)
+  const taskListForModal = (tasks ?? []).map((t) => ({
+    id: t.id,
+    title: t.title,
+    client_id: clientId,
+  }));
 
   return (
     <>
@@ -139,6 +206,123 @@ export default async function ClientDetailPage({
 
           <Separator />
 
+          {/* Quick actions */}
+          <div>
+            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Quick actions
+            </h2>
+            <ClientQuickActions
+              clientId={client.id}
+              clientName={client.name}
+              clientDefaultRate={client.default_rate != null ? Number(client.default_rate) : null}
+              tasks={taskListForModal}
+            />
+          </div>
+
+          <Separator />
+
+          {/* Active tasks */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Active tasks
+              </h2>
+              <Button asChild variant="ghost" size="sm" className="h-6 text-xs text-muted-foreground">
+                <Link href={`/tasks?clientId=${client.id}`}>View all</Link>
+              </Button>
+            </div>
+            <Separator className="mb-3" />
+            {(tasks ?? []).length === 0 ? (
+              <p className="text-sm text-muted-foreground">No active tasks.</p>
+            ) : (
+              <div className="divide-y divide-border rounded-md border border-border">
+                {(tasks ?? []).map((task) => {
+                  const href = (clientKey && task.task_number != null)
+                    ? `/tasks/${clientKey}-${task.task_number}`
+                    : `/tasks/${task.id}`;
+                  return (
+                    <Link
+                      key={task.id}
+                      href={href}
+                      className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors text-sm"
+                    >
+                      <span className="flex-1 font-medium text-foreground truncate">{task.title}</span>
+                      {task.priority && <TaskPriorityBadge priority={task.priority} />}
+                      {task.status && <TaskStatusBadge status={task.status} />}
+                      <span className="text-xs text-muted-foreground w-24 text-right shrink-0">
+                        {task.due_date ? formatDate(task.due_date) : "No due date"}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <Separator />
+
+          {/* Time summary */}
+          <div>
+            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Time summary
+            </h2>
+            <Separator className="mb-3" />
+            <div className="grid grid-cols-4 gap-4">
+              <StatCard label="Total hours" value={totalHours.toFixed(1)} />
+              <StatCard label="Billable hours" value={billableHours.toFixed(1)} />
+              <StatCard label="Unbilled hours" value={unbilledHours.toFixed(1)} />
+              <StatCard
+                label="Unbilled value"
+                value={formatCurrency(unbilledValue, client.currency)}
+              />
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Invoice history */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Invoice history
+              </h2>
+              {outstandingBalance > 0 && (
+                <span className="text-xs text-muted-foreground">
+                  Outstanding:{" "}
+                  <span className="font-semibold text-foreground">
+                    {formatCurrency(outstandingBalance, client.currency)}
+                  </span>
+                </span>
+              )}
+            </div>
+            <Separator className="mb-3" />
+            {invoiceList.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No invoices yet.</p>
+            ) : (
+              <div className="divide-y divide-border rounded-md border border-border">
+                {invoiceList.map((inv) => {
+                  const status = effectiveInvoiceStatus(inv.status, inv.due_date);
+                  return (
+                    <Link
+                      key={inv.id}
+                      href={`/invoices/${inv.id}`}
+                      className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors text-sm"
+                    >
+                      <span className="font-medium text-foreground w-24 shrink-0">{inv.invoice_number}</span>
+                      <span className="text-muted-foreground flex-1">{formatDate(inv.issue_date)}</span>
+                      <InvoiceStatusBadge status={status} />
+                      <span className="text-right font-medium text-foreground w-24 shrink-0">
+                        {formatCurrency(Number(inv.total ?? 0), client.currency)}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <Separator />
+
           {/* Client portal access */}
           <PortalAccessSection
             clientId={client.id}
@@ -146,47 +330,17 @@ export default async function ClientDetailPage({
             hasAccess={!!portalAccess}
             acceptedAt={portalAccess?.accepted_at ?? null}
           />
-
-          <Separator />
-
-          {/* Placeholder sections */}
-          <div className="grid grid-cols-3 gap-4">
-            <PlaceholderSection
-              icon={<CheckSquare className="h-4 w-4" />}
-              label="Tasks"
-              description="Available in Phase 3"
-            />
-            <PlaceholderSection
-              icon={<Clock className="h-4 w-4" />}
-              label="Time entries"
-              description="Available in Phase 4"
-            />
-            <PlaceholderSection
-              icon={<FileText className="h-4 w-4" />}
-              label="Invoices"
-              description="Available in Phase 5"
-            />
-          </div>
         </div>
       </PageContainer>
     </>
   );
 }
 
-function PlaceholderSection({
-  icon,
-  label,
-  description,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  description: string;
-}) {
+function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border border-dashed border-border p-4 text-center">
-      <div className="flex justify-center text-muted-foreground mb-2">{icon}</div>
-      <p className="text-sm font-medium">{label}</p>
-      <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+    <div className="rounded-md border border-border p-4">
+      <p className="text-xs text-muted-foreground mb-1">{label}</p>
+      <p className="text-lg font-semibold text-foreground">{value}</p>
     </div>
   );
 }

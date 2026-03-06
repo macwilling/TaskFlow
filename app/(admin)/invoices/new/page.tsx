@@ -3,7 +3,12 @@ import { TopBar } from "@/components/layout/TopBar";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { InvoiceBuilderClient } from "./InvoiceBuilderClient";
 
-export default async function NewInvoicePage() {
+export default async function NewInvoicePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ clientId?: string }>;
+}) {
+  const { clientId } = await searchParams;
   const supabase = await createClient();
 
   const [{ data: clients }, { data: settings }] = await Promise.all([
@@ -32,6 +37,7 @@ export default async function NewInvoicePage() {
           invoiceNumberNext={settings?.invoice_number_next ?? 1001}
           taxLabel={settings?.tax_label ?? "Tax"}
           paymentMethodOptions={settings?.payment_method_options ?? ["Check", "ACH", "Wire", "Credit Card", "Other"]}
+          defaultClientId={clientId}
         />
       </PageContainer>
     </>

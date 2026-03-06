@@ -3,7 +3,12 @@ import { TopBar } from "@/components/layout/TopBar";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { NewTaskForm } from "@/components/tasks/NewTaskForm";
 
-export default async function NewTaskPage() {
+export default async function NewTaskPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ clientId?: string }>;
+}) {
+  const { clientId } = await searchParams;
   const supabase = await createClient();
 
   const { data: clients } = await supabase
@@ -16,7 +21,7 @@ export default async function NewTaskPage() {
     <>
       <TopBar title="New task" description="Create a new task for a client." />
       <PageContainer>
-        <NewTaskForm clients={clients ?? []} />
+        <NewTaskForm clients={clients ?? []} defaultClientId={clientId} />
       </PageContainer>
     </>
   );
