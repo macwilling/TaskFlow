@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { TopBar } from "@/components/layout/TopBar";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { ArchiveClientButton } from "@/components/clients/ArchiveClientButton";
@@ -57,7 +58,7 @@ export default async function ClientDetailPage({
     supabase.from("clients").select("*").eq("id", clientId).single(),
     supabase
       .from("client_portal_access")
-      .select("accepted_at")
+      .select("accepted_at, invited_at, last_seen_at, user_id")
       .eq("client_id", clientId)
       .maybeSingle(),
     supabase
@@ -78,6 +79,14 @@ export default async function ClientDetailPage({
   ]);
 
   if (error || !client) notFound();
+
+  // Fetch the portal user's email from auth.users (service-role only)
+  let portalEmail: string | null = null;
+  if (portalAccess?.user_id) {
+    const admin = createAdminClient();
+    const { data: authUser } = await admin.auth.admin.getUserById(portalAccess.user_id as string);
+    portalEmail = authUser?.user?.email ?? null;
+  }
 
   const addr = client.billing_address as {
     line1?: string; line2?: string; city?: string;
@@ -329,6 +338,9 @@ export default async function ClientDetailPage({
             clientEmail={client.email}
             hasAccess={!!portalAccess}
             acceptedAt={portalAccess?.accepted_at ?? null}
+            invitedAt={(portalAccess as { invited_at?: string | null } | null)?.invited_at ?? null}
+            lastSeenAt={(portalAccess as { last_seen_at?: string | null } | null)?.last_seen_at ?? null}
+            portalEmail={portalEmail}
           />
         </div>
       </PageContainer>

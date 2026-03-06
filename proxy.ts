@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
+import { decodePayload, IMPERSONATION_COOKIE } from "@/lib/portal/impersonation";
 
 const ADMIN_ROUTES = [
   "/dashboard",
@@ -24,6 +25,14 @@ function isPortalProtectedRoute(pathname: string): boolean {
     !pathname.endsWith("/login") &&
     !pathname.includes("/login?")
   );
+}
+
+/** Returns true if the request carries a valid (non-expired) impersonation cookie for the given slug. */
+function hasValidImpersonationCookie(request: NextRequest, urlSlug: string): boolean {
+  const raw = request.cookies.get(IMPERSONATION_COOKIE)?.value;
+  if (!raw) return false;
+  const payload = decodePayload(raw);
+  return !!payload && payload.tenantSlug === urlSlug;
 }
 
 export async function proxy(request: NextRequest) {
@@ -58,23 +67,31 @@ export async function proxy(request: NextRequest) {
 
   // Portal route guard
   if (isPortalProtectedRoute(pathname)) {
-    if (!user) {
-      // Extract tenantSlug from path: /portal/[slug]/...
-      const parts = pathname.split("/");
-      const tenantSlug = parts[2] ?? "";
-      return NextResponse.redirect(
-        new URL(`/portal/${tenantSlug}/login`, request.url)
-      );
-    }
-    if (user.app_metadata?.role !== "client") {
-      const parts = pathname.split("/");
-      const tenantSlug = parts[2] ?? "";
-      return NextResponse.redirect(
-        new URL(`/portal/${tenantSlug}/login`, request.url)
-      );
-    }
-    // Redirect client to their own tenant if they navigate to another
     const urlSlug = pathname.split("/")[2] ?? "";
+
+    if (!user) {
+      return NextResponse.redirect(
+        new URL(`/portal/${urlSlug}/login`, request.url)
+      );
+    }
+
+    // Admin impersonation: allow admins through if they have a valid cookie for this tenant
+    if (user.app_metadata?.role === "admin") {
+      if (hasValidImpersonationCookie(request, urlSlug)) {
+        return supabaseResponse;
+      }
+      return NextResponse.redirect(
+        new URL(`/portal/${urlSlug}/login`, request.url)
+      );
+    }
+
+    if (user.app_metadata?.role !== "client") {
+      return NextResponse.redirect(
+        new URL(`/portal/${urlSlug}/login`, request.url)
+      );
+    }
+
+    // Redirect client to their own tenant if they navigate to another
     const userSlug = user.app_metadata?.tenant_slug as string | undefined;
     if (userSlug && userSlug !== urlSlug) {
       return NextResponse.redirect(new URL(`/portal/${userSlug}`, request.url));

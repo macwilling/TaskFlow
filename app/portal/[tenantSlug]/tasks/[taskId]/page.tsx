@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
 import { createClient, getCachedUser } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getImpersonationPayload } from "@/lib/portal/impersonation";
 import { Separator } from "@/components/ui/separator";
 import { TaskStatusBadge, TaskPriorityBadge } from "@/components/tasks/TaskStatusBadge";
 import { CommentThread } from "@/components/comments/CommentThread";
@@ -22,8 +24,19 @@ export default async function PortalTaskPage({
   params: Promise<{ tenantSlug: string; taskId: string }>;
 }) {
   const { tenantSlug, taskId } = await params;
-  const [user, supabase] = await Promise.all([getCachedUser(), createClient()]);
+
+  const [user, supabase, impersonation] = await Promise.all([
+    getCachedUser(),
+    createClient(),
+    getImpersonationPayload(),
+  ]);
   if (!user) notFound();
+
+  const admin = createAdminClient();
+  const isImpersonating = !!impersonation && impersonation.tenantSlug === tenantSlug;
+
+  // In impersonation mode use admin client (bypasses RLS)
+  const db = isImpersonating ? admin : supabase;
 
   // All three queries are independent — run them in parallel.
   const [
@@ -31,19 +44,19 @@ export default async function PortalTaskPage({
     { data: comments },
     { data: auditEntries },
   ] = await Promise.all([
-    supabase
+    db
       .from("tasks")
-      .select("id, title, status, priority, due_date, description, resolution_notes, created_at, closed_at")
+      .select("id, title, status, priority, due_date, description, resolution_notes, created_at, closed_at, client_id")
       .eq("id", taskId)
       .single(),
-    // Fetch comments — RLS client_comments_select enforces access
-    supabase
+    // Fetch comments
+    db
       .from("comments")
       .select("id, body, author_role, author_id, created_at")
       .eq("task_id", taskId)
       .order("created_at", { ascending: true }),
-    // Fetch audit log — RLS client_audit_log_select filters to non-sensitive events
-    supabase
+    // Fetch audit log
+    db
       .from("task_audit_log")
       .select("id, actor_role, event_type, old_value, new_value, metadata, created_at")
       .eq("task_id", taskId)
@@ -51,6 +64,11 @@ export default async function PortalTaskPage({
   ]);
 
   if (error || !task) notFound();
+
+  // In impersonation mode, verify the task belongs to the impersonated client
+  if (isImpersonating && (task as { client_id?: string }).client_id !== impersonation!.clientId) {
+    notFound();
+  }
 
   const isClosed = task.status === "closed";
 
@@ -129,16 +147,17 @@ export default async function PortalTaskPage({
 
       <Separator />
 
-      {/* Comments */}
+      {/* Comments — read-only during impersonation */}
       <CommentThread
         taskId={taskId}
         currentUserId={user.id}
         comments={comments ?? []}
+        readOnly={isImpersonating}
       />
 
       <Separator />
 
-      {/* Activity log (filtered by RLS to non-sensitive events) */}
+      {/* Activity log */}
       <div className="space-y-3">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Activity
