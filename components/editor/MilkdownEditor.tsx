@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { Crepe } from "@milkdown/crepe";
+import { commandsCtx } from "@milkdown/kit/core";
 import { cn } from "@/lib/utils";
 
 interface ToolbarConfig {
@@ -24,6 +25,7 @@ interface MilkdownEditorProps {
   minHeight?: string;
   className?: string;
   toolbarConfig?: ToolbarConfig;
+  onReady?: (callCommand: (key: string, payload?: unknown) => void) => void;
 }
 
 export function MilkdownEditor({
@@ -35,6 +37,7 @@ export function MilkdownEditor({
   minHeight = "120px",
   className,
   toolbarConfig,
+  onReady,
 }: MilkdownEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const crepeRef = useRef<Crepe | null>(null);
@@ -47,6 +50,7 @@ export function MilkdownEditor({
     const crepe = new Crepe({
       root: containerRef.current,
       defaultValue: value,
+      features: { [Crepe.Feature.Toolbar]: false },
       featureConfigs: {
         [Crepe.Feature.Placeholder]: { text: placeholder },
         ...(toolbarConfig ? { [Crepe.Feature.Toolbar]: toolbarConfig } : {}),
@@ -78,6 +82,11 @@ export function MilkdownEditor({
 
     crepe.create().then(() => {
       crepe.setReadonly(readOnly);
+      onReady?.((key, payload) => {
+        crepe.editor.action((ctx) => {
+          ctx.get(commandsCtx).call(key, payload);
+        });
+      });
     });
 
     crepeRef.current = crepe;

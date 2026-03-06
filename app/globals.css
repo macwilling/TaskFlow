@@ -109,13 +109,16 @@
   border-radius: inherit;
 }
 
-/* Give the ProseMirror content area breathing room.
-   The 3.5rem left padding doubles as a gutter for the block drag-handle,
-   which is position:absolute and extends ~66px to the left of the content.
-   Without it the handle slides behind the fixed left nav (w-56 = 224px). */
+/* Compact padding — block handle is hidden on task editors so no left gutter needed. */
 .milkdown .ProseMirror {
-  padding: 0.5rem 0.75rem 0.5rem 3.5rem;
+  padding: 0.5rem 0.75rem;
   min-height: inherit;
+}
+
+/* Hide the block drag-handle and + button in task editors.
+   Slash commands (/) still work for inserting block types. */
+.crepe-editor-wrapper .milkdown-block-handle {
+  display: none;
 }
 
 /* Read-only: tint the background to signal non-editable state */
