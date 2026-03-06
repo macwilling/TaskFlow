@@ -55,51 +55,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}${next}`);
   }
 
-  // ── Client invite acceptance ──────────────────────────────────────────────
-  if (user.user_metadata?.role === "client") {
-    const tenantId = user.user_metadata.tenant_id as string;
-    const clientId = user.user_metadata.client_id as string;
-    if (!tenantId || !clientId) {
-      await supabase.auth.signOut();
-      return NextResponse.redirect(`${origin}/auth/login?error=auth_callback_error`);
-    }
-    const admin = createAdminClient();
-    const { data: tenant } = await admin
-      .from("tenants")
-      .select("slug")
-      .eq("id", tenantId)
-      .single();
-    if (!tenant) {
-      await supabase.auth.signOut();
-      return NextResponse.redirect(`${origin}/auth/login?error=auth_callback_error`);
-    }
-    await admin.from("profiles").insert({
-      id: user.id,
-      tenant_id: tenantId,
-      role: "client",
-      full_name:
-        user.user_metadata.full_name ?? user.email?.split("@")[0] ?? "Client",
-    });
-    await admin.from("client_portal_access").insert({
-      tenant_id: tenantId,
-      client_id: clientId,
-      user_id: user.id,
-      invited_at: new Date().toISOString(),
-      accepted_at: new Date().toISOString(),
-    });
-    await admin.auth.admin.updateUserById(user.id, {
-      app_metadata: {
-        role: "client",
-        tenant_id: tenantId,
-        tenant_slug: tenant.slug,
-      },
-    });
-    return NextResponse.redirect(`${origin}/portal/${tenant.slug}`);
-  }
-
-  // ── Portal Google OAuth first-time sign-in ──────────────────────────────
-  // No profile + not an email invite + next is a portal URL.
+  // ── Portal first-time sign-in (OTP magic link OR Google OAuth) ──────────
+  // No profile + next is a portal URL.
   // Match the user's email to an existing clients record to authorize access.
+  // If the admin already granted access (pending row exists), update it.
+  // Otherwise insert a new access row (backwards-compat for Google OAuth
+  // users who weren't pre-invited).
   if (next.startsWith("/portal/")) {
     const portalSlug = next.split("/")[2];
     const admin = createAdminClient();
@@ -141,12 +102,31 @@ export async function GET(request: NextRequest) {
       role: "client",
       full_name: displayName,
     });
-    await admin.from("client_portal_access").insert({
-      tenant_id: tenant.id,
-      client_id: client.id,
-      user_id: user.id,
-      accepted_at: new Date().toISOString(),
-    });
+
+    // Update existing pending row if present (OTP invite flow),
+    // otherwise insert a new row (e.g. Google OAuth without prior invite).
+    const { data: existingAccess } = await admin
+      .from("client_portal_access")
+      .select("id")
+      .eq("client_id", client.id)
+      .eq("tenant_id", tenant.id)
+      .maybeSingle();
+
+    if (existingAccess) {
+      await admin
+        .from("client_portal_access")
+        .update({ user_id: user.id, accepted_at: new Date().toISOString() })
+        .eq("client_id", client.id)
+        .eq("tenant_id", tenant.id);
+    } else {
+      await admin.from("client_portal_access").insert({
+        tenant_id: tenant.id,
+        client_id: client.id,
+        user_id: user.id,
+        accepted_at: new Date().toISOString(),
+      });
+    }
+
     await admin.auth.admin.updateUserById(user.id, {
       app_metadata: {
         role: "client",

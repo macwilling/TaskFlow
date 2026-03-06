@@ -66,6 +66,7 @@ export const mockAdminAuthAdmin = {
   updateUserById: vi.fn(),
   deleteUser: vi.fn(),
   inviteUserByEmail: vi.fn(),
+  generateLink: vi.fn(),
 };
 
 export const mockAdminClient = {
@@ -90,5 +91,6 @@ export function resetSupabaseMocks() {
   mockAdminAuthAdmin.updateUserById.mockReset();
   mockAdminAuthAdmin.deleteUser.mockReset();
   mockAdminAuthAdmin.inviteUserByEmail.mockReset();
+  mockAdminAuthAdmin.generateLink.mockReset();
   (mockAdminClient.rpc as ReturnType<typeof vi.fn>).mockReset();
 }

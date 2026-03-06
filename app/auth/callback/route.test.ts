@@ -105,63 +105,9 @@ describe("GET /auth/callback", () => {
     expect(res.headers.get("location")).toContain("error=auth_callback_error");
   });
 
-  // ── Client invite acceptance ─────────────────────────────────────────────
+  // ── Portal first-time sign-in (OTP or Google OAuth) ───────────────────────
 
-  it("accepts client invite: creates profile + portal access + redirects to portal", async () => {
-    mockSupabaseClient.auth.exchangeCodeForSession.mockResolvedValueOnce({ error: null });
-    mockSupabaseClient.auth.getUser.mockResolvedValueOnce({
-      data: {
-        user: {
-          id: "new-client",
-          email: "c@example.com",
-          app_metadata: {},
-          user_metadata: { role: "client", tenant_id: "t1", client_id: "c1" },
-        },
-      },
-      error: null,
-    });
-    // no existing profile
-    mockSupabaseFrom.mockReturnValueOnce(makeChain({ data: null, error: null }));
-    // admin: tenant lookup
-    mockAdminFrom
-      .mockReturnValueOnce(makeChain({ data: { slug: "acme" }, error: null }))
-      .mockReturnValueOnce(makeChain({ data: null, error: null })) // profiles insert
-      .mockReturnValueOnce(makeChain({ data: null, error: null })); // portal_access insert
-    mockAdminAuthAdmin.updateUserById.mockResolvedValueOnce({ error: null });
-
-    const res = await GET(makeRequest({ code: "ok-code" }));
-    expect(res.headers.get("location")).toContain("/portal/acme");
-    expect(mockAdminAuthAdmin.updateUserById).toHaveBeenCalledWith(
-      "new-client",
-      expect.objectContaining({
-        app_metadata: expect.objectContaining({ role: "client", tenant_slug: "acme" }),
-      })
-    );
-  });
-
-  it("rejects invite when tenant not found", async () => {
-    mockSupabaseClient.auth.exchangeCodeForSession.mockResolvedValueOnce({ error: null });
-    mockSupabaseClient.auth.getUser.mockResolvedValueOnce({
-      data: {
-        user: {
-          id: "u1",
-          app_metadata: {},
-          user_metadata: { role: "client", tenant_id: "bad-tenant", client_id: "c1" },
-        },
-      },
-      error: null,
-    });
-    mockSupabaseFrom.mockReturnValueOnce(makeChain({ data: null, error: null }));
-    mockAdminFrom.mockReturnValueOnce(makeChain({ data: null, error: null })); // tenant not found
-    mockSupabaseClient.auth.signOut.mockResolvedValueOnce({});
-
-    const res = await GET(makeRequest({ code: "ok-code" }));
-    expect(res.headers.get("location")).toContain("error=auth_callback_error");
-  });
-
-  // ── Portal Google OAuth first-time ────────────────────────────────────────
-
-  it("creates client profile on first portal OAuth when email matches a client", async () => {
+  it("creates client profile on first portal sign-in when email matches a client (no existing access row)", async () => {
     mockSupabaseClient.auth.exchangeCodeForSession.mockResolvedValueOnce({ error: null });
     mockSupabaseClient.auth.getUser.mockResolvedValueOnce({
       data: {
@@ -180,15 +126,50 @@ describe("GET /auth/callback", () => {
     mockAdminFrom
       .mockReturnValueOnce(makeChain({ data: { id: "t1", slug: "acme" }, error: null }))
       .mockReturnValueOnce(makeChain({ data: { id: "c1" }, error: null })) // clients match
-      .mockReturnValueOnce(makeChain({ data: null, error: null })) // profiles insert
-      .mockReturnValueOnce(makeChain({ data: null, error: null })); // portal_access insert
+      .mockReturnValueOnce(makeChain({ data: null, error: null }))         // profiles insert
+      .mockReturnValueOnce(makeChain({ data: null, error: null }))         // no existing access row
+      .mockReturnValueOnce(makeChain({ data: null, error: null }));        // access insert
     mockAdminAuthAdmin.updateUserById.mockResolvedValueOnce({ error: null });
 
     const res = await GET(makeRequest({ code: "ok-code", next: "/portal/acme" }));
     expect(res.headers.get("location")).toContain("/portal/acme");
   });
 
-  it("returns not_invited when OAuth email doesn't match any client", async () => {
+  it("updates existing pending access row on first OTP sign-in", async () => {
+    mockSupabaseClient.auth.exchangeCodeForSession.mockResolvedValueOnce({ error: null });
+    mockSupabaseClient.auth.getUser.mockResolvedValueOnce({
+      data: {
+        user: {
+          id: "otp-user",
+          email: "client@example.com",
+          app_metadata: {},
+          user_metadata: {},
+        },
+      },
+      error: null,
+    });
+    // no existing profile
+    mockSupabaseFrom.mockReturnValueOnce(makeChain({ data: null, error: null }));
+
+    const updateAccessChain = makeChain({ data: null, error: null });
+
+    mockAdminFrom
+      .mockReturnValueOnce(makeChain({ data: { id: "t1", slug: "acme" }, error: null }))
+      .mockReturnValueOnce(makeChain({ data: { id: "c1" }, error: null }))          // client match
+      .mockReturnValueOnce(makeChain({ data: null, error: null }))                  // profiles insert
+      .mockReturnValueOnce(makeChain({ data: { id: "existing-row" }, error: null })) // existing access
+      .mockReturnValueOnce(updateAccessChain);                                       // update access
+    mockAdminAuthAdmin.updateUserById.mockResolvedValueOnce({ error: null });
+
+    const res = await GET(makeRequest({ code: "ok-code", next: "/portal/acme" }));
+    expect(res.headers.get("location")).toContain("/portal/acme");
+    // Should UPDATE not INSERT when row exists
+    expect(updateAccessChain.update).toHaveBeenCalledWith(
+      expect.objectContaining({ user_id: "otp-user", accepted_at: expect.any(String) })
+    );
+  });
+
+  it("returns not_invited when email doesn't match any client", async () => {
     mockSupabaseClient.auth.exchangeCodeForSession.mockResolvedValueOnce({ error: null });
     mockSupabaseClient.auth.getUser.mockResolvedValueOnce({
       data: {
@@ -209,6 +190,27 @@ describe("GET /auth/callback", () => {
 
     const res = await GET(makeRequest({ code: "ok-code", next: "/portal/acme" }));
     expect(res.headers.get("location")).toContain("error=not_invited");
+  });
+
+  it("redirects to login error when portal tenant not found", async () => {
+    mockSupabaseClient.auth.exchangeCodeForSession.mockResolvedValueOnce({ error: null });
+    mockSupabaseClient.auth.getUser.mockResolvedValueOnce({
+      data: {
+        user: {
+          id: "u1",
+          email: "c@example.com",
+          app_metadata: {},
+          user_metadata: {},
+        },
+      },
+      error: null,
+    });
+    mockSupabaseFrom.mockReturnValueOnce(makeChain({ data: null, error: null }));
+    mockAdminFrom.mockReturnValueOnce(makeChain({ data: null, error: null })); // tenant not found
+    mockSupabaseClient.auth.signOut.mockResolvedValueOnce({});
+
+    const res = await GET(makeRequest({ code: "ok-code", next: "/portal/bad-slug" }));
+    expect(res.headers.get("location")).toContain("error=auth_callback_error");
   });
 
   // ── First-time OAuth admin sign-in ────────────────────────────────────────
