@@ -1,24 +1,11 @@
 "use client";
 import { useActionState, useTransition, useState } from "react";
-import { useFormStatus } from "react-dom";
 import {
-  inviteClientToPortalAction,
   sendPortalSignInLinkAction,
   revokePortalAccessAction,
 } from "@/app/actions/portal";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { CheckCircle2, Eye } from "lucide-react";
-
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" size="sm" className="h-7 text-xs" disabled={pending}>
-      {pending ? "Sending…" : "Send invite"}
-    </Button>
-  );
-}
+import { CheckCircle2, Clock, Eye } from "lucide-react";
 
 function formatDate(d: string | null) {
   if (!d) return null;
@@ -46,9 +33,6 @@ export function PortalAccessSection({
   lastSeenAt: string | null;
   portalEmail: string | null;
 }) {
-  const boundInvite = inviteClientToPortalAction.bind(null, clientId);
-  const [inviteState, inviteFormAction] = useActionState(boundInvite, null);
-
   const boundSendLink = sendPortalSignInLinkAction.bind(null, clientId);
   const [linkState, sendLinkAction] = useActionState(boundSendLink, null);
 
@@ -71,14 +55,14 @@ export function PortalAccessSection({
         Client Portal Access
       </h2>
 
-      {hasAccess ? (
+      {/* ── Active: client has signed in at least once ── */}
+      {hasAccess && acceptedAt ? (
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400">
             <CheckCircle2 className="h-4 w-4 shrink-0" />
             <span>Portal access active</span>
           </div>
 
-          {/* Status details */}
           <dl className="space-y-1">
             {portalEmail && (
               <div className="flex gap-4">
@@ -92,12 +76,10 @@ export function PortalAccessSection({
                 <dd className="text-foreground text-xs">{formatDate(invitedAt)}</dd>
               </div>
             )}
-            {acceptedAt && (
-              <div className="flex gap-4">
-                <dt className="w-28 shrink-0 text-muted-foreground text-xs">First login</dt>
-                <dd className="text-foreground text-xs">{formatDate(acceptedAt)}</dd>
-              </div>
-            )}
+            <div className="flex gap-4">
+              <dt className="w-28 shrink-0 text-muted-foreground text-xs">First login</dt>
+              <dd className="text-foreground text-xs">{formatDate(acceptedAt)}</dd>
+            </div>
             <div className="flex gap-4">
               <dt className="w-28 shrink-0 text-muted-foreground text-xs">Last seen</dt>
               <dd className="text-foreground text-xs">
@@ -107,7 +89,6 @@ export function PortalAccessSection({
           </dl>
 
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Impersonate */}
             <Button
               size="sm"
               variant="outline"
@@ -119,10 +100,9 @@ export function PortalAccessSection({
               Impersonate
             </Button>
 
-            {/* Send sign-in link */}
             {linkState?.success ? (
               <span className="text-xs text-emerald-600 dark:text-emerald-400">
-                Sign-in link sent.
+                Access link sent.
               </span>
             ) : (
               <form action={sendLinkAction}>
@@ -133,12 +113,82 @@ export function PortalAccessSection({
                   className="h-7 text-xs"
                   disabled={isPending}
                 >
-                  Send sign-in link
+                  Resend access link
                 </Button>
               </form>
             )}
 
-            {/* Revoke access */}
+            {confirmRevoke ? (
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">Revoke access?</span>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="h-7 text-xs"
+                  disabled={isPending}
+                  onClick={handleRevoke}
+                >
+                  {isPending ? "Revoking…" : "Yes, revoke"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-xs"
+                  disabled={isPending}
+                  onClick={() => setConfirmRevoke(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            ) : (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 text-xs text-destructive hover:text-destructive"
+                onClick={() => setConfirmRevoke(true)}
+              >
+                Revoke access
+              </Button>
+            )}
+          </div>
+
+          {linkState?.error && (
+            <p className="text-xs text-destructive">{linkState.error}</p>
+          )}
+        </div>
+      ) : hasAccess && !acceptedAt ? (
+        /* ── Pending: invite sent, client hasn't logged in yet ── */
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400">
+            <Clock className="h-4 w-4 shrink-0" />
+            <span>Awaiting first login</span>
+          </div>
+
+          {invitedAt && (
+            <p className="text-xs text-muted-foreground">
+              Invite sent {formatDate(invitedAt)} — client has not logged in yet.
+            </p>
+          )}
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {linkState?.success ? (
+              <span className="text-xs text-emerald-600 dark:text-emerald-400">
+                Access link sent.
+              </span>
+            ) : (
+              <form action={sendLinkAction}>
+                <Button
+                  type="submit"
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs"
+                  disabled={isPending}
+                >
+                  Resend access link
+                </Button>
+              </form>
+            )}
+
             {confirmRevoke ? (
               <div className="flex items-center gap-1.5">
                 <span className="text-xs text-muted-foreground">Revoke access?</span>
@@ -178,39 +228,35 @@ export function PortalAccessSection({
           )}
         </div>
       ) : (
-        <>
-          <p className="text-sm text-muted-foreground mb-3">
-            {invitedAt
-              ? `Invite sent ${formatDate(invitedAt)} — client has not yet accepted.`
-              : "Invite this client to access their portal. They'll receive an email with a magic link to set up their account."}
+        /* ── Not invited: no portal access row ── */
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            {clientEmail
+              ? `Grant ${clientEmail} access to the client portal.`
+              : "Grant this client access to the client portal."}
           </p>
-          {inviteState?.success ? (
+
+          {linkState?.success ? (
             <p className="text-sm text-emerald-600 dark:text-emerald-400">
-              Invite sent successfully.
+              Access link sent — invite is pending client login.
             </p>
           ) : (
-            <form action={inviteFormAction} className="flex items-end gap-2 max-w-sm">
-              <div className="flex-1 space-y-1">
-                <Label htmlFor="portal-invite-email" className="text-xs">
-                  Email address
-                </Label>
-                <Input
-                  id="portal-invite-email"
-                  name="email"
-                  type="email"
-                  defaultValue={clientEmail ?? ""}
-                  placeholder="client@example.com"
-                  className="h-7 text-xs"
-                  required
-                />
-              </div>
-              <SubmitButton />
+            <form action={sendLinkAction}>
+              <Button
+                type="submit"
+                size="sm"
+                className="h-7 text-xs"
+                disabled={isPending || !clientEmail}
+              >
+                Grant portal access
+              </Button>
             </form>
           )}
-          {inviteState?.error && (
-            <p className="mt-1.5 text-xs text-destructive">{inviteState.error}</p>
+
+          {linkState?.error && (
+            <p className="mt-1.5 text-xs text-destructive">{linkState.error}</p>
           )}
-        </>
+        </div>
       )}
     </div>
   );

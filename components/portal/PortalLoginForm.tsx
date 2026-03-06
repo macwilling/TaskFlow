@@ -1,6 +1,5 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +11,7 @@ function errorMessage(code: string | undefined): string | null {
     case "auth_callback_error":
       return "Authentication failed. Please try again.";
     case "not_invited":
-      return "Your Google account is not linked to a portal invitation.";
+      return "This email hasn't been granted portal access. Please contact your consultant.";
     default:
       return null;
   }
@@ -49,38 +48,16 @@ export function PortalLoginForm({
   tenantSlug: string;
   initialError?: string;
 }) {
-  const router = useRouter();
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(errorMessage(initialError));
-  const [loading, setLoading] = useState(false);
   const [magicLinkLoading, setMagicLinkLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-    const supabase = createClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (signInError) {
-      setError(signInError.message);
-      setLoading(false);
-      return;
-    }
-    router.push(`/portal/${tenantSlug}`);
-    router.refresh();
-  }
+  const busy = magicLinkLoading || googleLoading;
 
-  async function handleMagicLink() {
-    if (!email) {
-      setError("Enter your email above first.");
-      return;
-    }
+  async function handleMagicLink(e: React.FormEvent) {
+    e.preventDefault();
     setError(null);
     setMagicLinkLoading(true);
     const supabase = createClient();
@@ -115,13 +92,11 @@ export function PortalLoginForm({
     // On success the browser redirects — no further action needed here
   }
 
-  const busy = loading || magicLinkLoading || googleLoading;
-
   if (magicLinkSent) {
     return (
       <Alert>
         <AlertDescription>
-          Check your email for a sign-in link.
+          Check your inbox — we sent a sign-in link to <strong>{email}</strong>.
         </AlertDescription>
       </Alert>
     );
@@ -135,32 +110,8 @@ export function PortalLoginForm({
         </Alert>
       )}
 
-      {/* Google OAuth */}
-      <Button
-        type="button"
-        variant="outline"
-        className="w-full"
-        disabled={busy}
-        onClick={handleGoogleSignIn}
-      >
-        <GoogleIcon />
-        <span className="ml-2">
-          {googleLoading ? "Redirecting…" : "Continue with Google"}
-        </span>
-      </Button>
-
-      {/* Divider */}
-      <div className="relative">
-        <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t border-border" />
-        </div>
-        <div className="relative flex justify-center text-xs">
-          <span className="bg-background px-2 text-muted-foreground">or</span>
-        </div>
-      </div>
-
-      {/* Email / password */}
-      <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Primary: email → magic link */}
+      <form onSubmit={handleMagicLink} className="space-y-3">
         <div className="space-y-1.5">
           <Label htmlFor="email">Email</Label>
           <Input
@@ -172,31 +123,33 @@ export function PortalLoginForm({
             onChange={(e) => setEmail(e.target.value)}
           />
         </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="password">Password</Label>
-          <Input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </div>
         <Button type="submit" className="w-full" disabled={busy}>
-          {loading ? "Signing in…" : "Sign in"}
+          {magicLinkLoading ? "Sending…" : "Email me a sign-in link"}
         </Button>
       </form>
 
-      {/* Magic link */}
+      {/* Divider */}
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t border-border" />
+        </div>
+        <div className="relative flex justify-center text-xs">
+          <span className="bg-background px-2 text-muted-foreground">or</span>
+        </div>
+      </div>
+
+      {/* Secondary: Google OAuth */}
       <Button
         type="button"
-        variant="ghost"
-        className="w-full text-muted-foreground"
+        variant="outline"
+        className="w-full"
         disabled={busy}
-        onClick={handleMagicLink}
+        onClick={handleGoogleSignIn}
       >
-        {magicLinkLoading ? "Sending…" : "Email me a sign-in link"}
+        <GoogleIcon />
+        <span className="ml-2">
+          {googleLoading ? "Redirecting…" : "Continue with Google"}
+        </span>
       </Button>
     </div>
   );

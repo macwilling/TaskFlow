@@ -9,6 +9,15 @@ import {
   resetSupabaseMocks,
 } from "@/lib/supabase/__mocks__";
 
+// Hoist the Resend mock so it's available before vi.mock hoisting
+const mockEmailsSend = vi.hoisted(() => vi.fn());
+
+vi.mock("resend", () => ({
+  Resend: class {
+    emails = { send: mockEmailsSend };
+  },
+}));
+
 vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -17,47 +26,27 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import {
-  inviteClientToPortalAction,
   sendPortalSignInLinkAction,
   revokePortalAccessAction,
-  finalizeInviteAction,
 } from "@/app/actions/portal";
 
 const adminUser = { id: "admin-1", app_metadata: { role: "admin" } };
-const portalUser = {
-  id: "portal-1",
-  email: "client@example.com",
-  app_metadata: { role: "client", tenant_slug: "acme" },
-  user_metadata: { tenant_id: "t1", client_id: "c1" },
-};
 
 beforeEach(() => {
   resetSupabaseMocks();
   (createClient as Mock).mockResolvedValue(mockSupabaseClient);
   (createAdminClient as Mock).mockReturnValue(mockAdminClient);
+  mockEmailsSend.mockReset();
+  process.env.NEXT_PUBLIC_APP_URL = "https://app.example.com";
+  process.env.RESEND_API_KEY = "test-key";
 });
 
-// ── inviteClientToPortalAction ─────────────────────────────────────────────
+// ── sendPortalSignInLinkAction ─────────────────────────────────────────────
 
-describe("inviteClientToPortalAction", () => {
-  const makeFormData = (email: string) => {
-    const fd = new FormData();
-    fd.append("email", email);
-    return fd;
-  };
-
+describe("sendPortalSignInLinkAction", () => {
   it("returns Unauthorized when no user", async () => {
-    const result = await inviteClientToPortalAction("c1", null, makeFormData("a@b.com"));
+    const result = await sendPortalSignInLinkAction("c1", null);
     expect(result).toEqual({ error: "Unauthorized." });
-  });
-
-  it("returns error when email is empty", async () => {
-    mockSupabaseClient.auth.getUser.mockResolvedValueOnce({
-      data: { user: adminUser },
-      error: null,
-    });
-    const result = await inviteClientToPortalAction("c1", null, makeFormData(""));
-    expect(result).toEqual({ error: "Email is required." });
   });
 
   it("returns Unauthorized when profile role is not admin", async () => {
@@ -68,68 +57,6 @@ describe("inviteClientToPortalAction", () => {
     mockSupabaseFrom.mockReturnValueOnce(
       makeChain({ data: { tenant_id: "t1", role: "client" }, error: null })
     );
-    const result = await inviteClientToPortalAction("c1", null, makeFormData("x@y.com"));
-    expect(result).toEqual({ error: "Unauthorized." });
-  });
-
-  it("returns error when client not found", async () => {
-    mockSupabaseClient.auth.getUser.mockResolvedValueOnce({
-      data: { user: adminUser },
-      error: null,
-    });
-    mockSupabaseFrom
-      .mockReturnValueOnce(makeChain({ data: { tenant_id: "t1", role: "admin" }, error: null }))
-      .mockReturnValueOnce(makeChain({ data: null, error: null })); // client not found
-
-    const result = await inviteClientToPortalAction("c1", null, makeFormData("x@y.com"));
-    expect(result).toEqual({ error: "Client not found." });
-  });
-
-  it("returns error from admin invite call", async () => {
-    mockSupabaseClient.auth.getUser.mockResolvedValueOnce({
-      data: { user: adminUser },
-      error: null,
-    });
-    mockSupabaseFrom
-      .mockReturnValueOnce(makeChain({ data: { tenant_id: "t1", role: "admin" }, error: null }))
-      .mockReturnValueOnce(makeChain({ data: { id: "c1" }, error: null }));
-    mockAdminAuthAdmin.inviteUserByEmail.mockResolvedValueOnce({
-      data: null,
-      error: { message: "already invited" },
-    });
-
-    const result = await inviteClientToPortalAction("c1", null, makeFormData("x@y.com"));
-    expect(result).toEqual({ error: "already invited" });
-  });
-
-  it("invites client successfully", async () => {
-    mockSupabaseClient.auth.getUser.mockResolvedValueOnce({
-      data: { user: adminUser },
-      error: null,
-    });
-    mockSupabaseFrom
-      .mockReturnValueOnce(makeChain({ data: { tenant_id: "t1", role: "admin" }, error: null }))
-      .mockReturnValueOnce(makeChain({ data: { id: "c1" }, error: null }));
-    mockAdminAuthAdmin.inviteUserByEmail.mockResolvedValueOnce({
-      data: {},
-      error: null,
-    });
-
-    const result = await inviteClientToPortalAction("c1", null, makeFormData("client@example.com"));
-    expect(result).toEqual({ success: true });
-    expect(mockAdminAuthAdmin.inviteUserByEmail).toHaveBeenCalledWith(
-      "client@example.com",
-      expect.objectContaining({
-        data: expect.objectContaining({ role: "client", tenant_id: "t1", client_id: "c1" }),
-      })
-    );
-  });
-});
-
-// ── sendPortalSignInLinkAction ─────────────────────────────────────────────
-
-describe("sendPortalSignInLinkAction", () => {
-  it("returns Unauthorized when no user", async () => {
     const result = await sendPortalSignInLinkAction("c1", null);
     expect(result).toEqual({ error: "Unauthorized." });
   });
@@ -141,45 +68,172 @@ describe("sendPortalSignInLinkAction", () => {
     });
     mockSupabaseFrom
       .mockReturnValueOnce(makeChain({ data: { tenant_id: "t1", role: "admin" }, error: null }))
-      .mockReturnValueOnce(makeChain({ data: { email: null }, error: null }));
+      .mockReturnValueOnce(makeChain({ data: { email: null, name: "Bob" }, error: null }));
 
     const result = await sendPortalSignInLinkAction("c1", null);
     expect(result).toEqual({ error: "Client email not found." });
   });
 
-  it("returns error when no portal access", async () => {
+  it("returns error when tenant not found", async () => {
     mockSupabaseClient.auth.getUser.mockResolvedValueOnce({
       data: { user: adminUser },
       error: null,
     });
     mockSupabaseFrom
       .mockReturnValueOnce(makeChain({ data: { tenant_id: "t1", role: "admin" }, error: null }))
-      .mockReturnValueOnce(makeChain({ data: { email: "c@example.com" }, error: null }));
+      .mockReturnValueOnce(makeChain({ data: { email: "c@example.com", name: "Bob" }, error: null }));
     mockAdminFrom
-      .mockReturnValueOnce(makeChain({ data: null, error: null })); // no portal access
+      .mockReturnValueOnce(makeChain({ data: null, error: null })); // tenant not found
 
     const result = await sendPortalSignInLinkAction("c1", null);
-    expect(result).toEqual({ error: "Client does not have portal access." });
+    expect(result).toEqual({ error: "Tenant not found." });
   });
 
-  it("sends magic link successfully", async () => {
+  it("inserts pending portal_access row on first grant", async () => {
     mockSupabaseClient.auth.getUser.mockResolvedValueOnce({
       data: { user: adminUser },
       error: null,
     });
     mockSupabaseFrom
       .mockReturnValueOnce(makeChain({ data: { tenant_id: "t1", role: "admin" }, error: null }))
-      .mockReturnValueOnce(makeChain({ data: { email: "c@example.com" }, error: null }));
+      .mockReturnValueOnce(makeChain({ data: { email: "c@example.com", name: "Bob" }, error: null }));
+
+    const insertAccessChain = makeChain({ data: null, error: null });
+    const insertEmailLogChain = makeChain({ data: null, error: null });
+
     mockAdminFrom
-      .mockReturnValueOnce(makeChain({ data: { user_id: "u1" }, error: null }))
-      .mockReturnValueOnce(makeChain({ data: { slug: "acme" }, error: null }));
-    mockSupabaseClient.auth.signInWithOtp.mockResolvedValueOnce({ error: null });
+      .mockReturnValueOnce(makeChain({ data: { slug: "acme" }, error: null }))      // tenant
+      .mockReturnValueOnce(makeChain({ data: { business_name: "Acme Co" }, error: null })) // settings
+      .mockReturnValueOnce(makeChain({ data: null, error: null }))                  // no existing access
+      .mockReturnValueOnce(insertAccessChain)                                       // insert access row
+      .mockReturnValueOnce(insertEmailLogChain);                                    // email_log insert
+
+    mockAdminAuthAdmin.generateLink.mockResolvedValueOnce({
+      data: { properties: { action_link: "https://supabase.co/magic-link" } },
+      error: null,
+    });
+    mockEmailsSend.mockResolvedValueOnce({ data: { id: "resend-1" }, error: null });
 
     const result = await sendPortalSignInLinkAction("c1", null);
     expect(result).toEqual({ success: true });
-    expect(mockSupabaseClient.auth.signInWithOtp).toHaveBeenCalledWith(
-      expect.objectContaining({ email: "c@example.com" })
+    expect(insertAccessChain.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ client_id: "c1", tenant_id: "t1", invited_at: expect.any(String) })
     );
+  });
+
+  it("skips row insertion on resend (row already exists)", async () => {
+    mockSupabaseClient.auth.getUser.mockResolvedValueOnce({
+      data: { user: adminUser },
+      error: null,
+    });
+    mockSupabaseFrom
+      .mockReturnValueOnce(makeChain({ data: { tenant_id: "t1", role: "admin" }, error: null }))
+      .mockReturnValueOnce(makeChain({ data: { email: "c@example.com", name: "Bob" }, error: null }));
+
+    const insertEmailLogChain = makeChain({ data: null, error: null });
+
+    mockAdminFrom
+      .mockReturnValueOnce(makeChain({ data: { slug: "acme" }, error: null }))
+      .mockReturnValueOnce(makeChain({ data: { business_name: "Acme Co" }, error: null }))
+      .mockReturnValueOnce(makeChain({ data: { id: "existing-row" }, error: null })) // existing access
+      .mockReturnValueOnce(insertEmailLogChain);                                     // email_log insert
+
+    mockAdminAuthAdmin.generateLink.mockResolvedValueOnce({
+      data: { properties: { action_link: "https://supabase.co/magic-link" } },
+      error: null,
+    });
+    mockEmailsSend.mockResolvedValueOnce({ data: { id: "resend-1" }, error: null });
+
+    const result = await sendPortalSignInLinkAction("c1", null);
+    expect(result).toEqual({ success: true });
+    // Only 4 admin.from calls (tenant, settings, existing check, email_log) — no insert
+    expect(mockAdminFrom).toHaveBeenCalledTimes(4);
+  });
+
+  it("sends branded Resend email with magic link", async () => {
+    mockSupabaseClient.auth.getUser.mockResolvedValueOnce({
+      data: { user: adminUser },
+      error: null,
+    });
+    mockSupabaseFrom
+      .mockReturnValueOnce(makeChain({ data: { tenant_id: "t1", role: "admin" }, error: null }))
+      .mockReturnValueOnce(makeChain({ data: { email: "c@example.com", name: "Bob" }, error: null }));
+    mockAdminFrom
+      .mockReturnValueOnce(makeChain({ data: { slug: "acme" }, error: null }))
+      .mockReturnValueOnce(makeChain({ data: { business_name: "Acme Co" }, error: null }))
+      .mockReturnValueOnce(makeChain({ data: null, error: null }))  // no existing access
+      .mockReturnValueOnce(makeChain({ data: null, error: null }))  // insert access
+      .mockReturnValueOnce(makeChain({ data: null, error: null })); // email_log
+    mockAdminAuthAdmin.generateLink.mockResolvedValueOnce({
+      data: { properties: { action_link: "https://supabase.co/magic-link-url" } },
+      error: null,
+    });
+    mockEmailsSend.mockResolvedValueOnce({ data: { id: "r-1" }, error: null });
+
+    await sendPortalSignInLinkAction("c1", null);
+
+    expect(mockAdminAuthAdmin.generateLink).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "magiclink",
+        email: "c@example.com",
+        options: expect.objectContaining({ redirectTo: expect.stringContaining("/portal/acme") }),
+      })
+    );
+
+    const [emailArgs] = mockEmailsSend.mock.calls[0];
+    expect(emailArgs.to).toBe("c@example.com");
+    expect(emailArgs.subject).toContain("Acme Co");
+    expect(emailArgs.html).toContain("https://supabase.co/magic-link-url");
+    expect(emailArgs.html).toContain("Bob");
+  });
+
+  it("returns error when generateLink fails", async () => {
+    mockSupabaseClient.auth.getUser.mockResolvedValueOnce({
+      data: { user: adminUser },
+      error: null,
+    });
+    mockSupabaseFrom
+      .mockReturnValueOnce(makeChain({ data: { tenant_id: "t1", role: "admin" }, error: null }))
+      .mockReturnValueOnce(makeChain({ data: { email: "c@example.com", name: "Bob" }, error: null }));
+    mockAdminFrom
+      .mockReturnValueOnce(makeChain({ data: { slug: "acme" }, error: null }))
+      .mockReturnValueOnce(makeChain({ data: { business_name: "Acme Co" }, error: null }))
+      .mockReturnValueOnce(makeChain({ data: null, error: null }))  // no existing access
+      .mockReturnValueOnce(makeChain({ data: null, error: null })); // insert access
+    mockAdminAuthAdmin.generateLink.mockResolvedValueOnce({
+      data: null,
+      error: { message: "rate limited" },
+    });
+
+    const result = await sendPortalSignInLinkAction("c1", null);
+    expect(result).toEqual({ error: "rate limited" });
+  });
+
+  it("returns error when Resend send fails", async () => {
+    mockSupabaseClient.auth.getUser.mockResolvedValueOnce({
+      data: { user: adminUser },
+      error: null,
+    });
+    mockSupabaseFrom
+      .mockReturnValueOnce(makeChain({ data: { tenant_id: "t1", role: "admin" }, error: null }))
+      .mockReturnValueOnce(makeChain({ data: { email: "c@example.com", name: "Bob" }, error: null }));
+    mockAdminFrom
+      .mockReturnValueOnce(makeChain({ data: { slug: "acme" }, error: null }))
+      .mockReturnValueOnce(makeChain({ data: { business_name: "Acme Co" }, error: null }))
+      .mockReturnValueOnce(makeChain({ data: null, error: null }))  // no existing access
+      .mockReturnValueOnce(makeChain({ data: null, error: null }))  // insert access
+      .mockReturnValueOnce(makeChain({ data: null, error: null })); // email_log
+    mockAdminAuthAdmin.generateLink.mockResolvedValueOnce({
+      data: { properties: { action_link: "https://supabase.co/magic" } },
+      error: null,
+    });
+    mockEmailsSend.mockResolvedValueOnce({
+      data: null,
+      error: { message: "Resend error" },
+    });
+
+    const result = await sendPortalSignInLinkAction("c1", null);
+    expect(result).toEqual({ error: "Resend error" });
   });
 });
 
@@ -205,7 +259,7 @@ describe("revokePortalAccessAction", () => {
     expect(result).toEqual({ error: "No portal access found." });
   });
 
-  it("revokes access: deletes profile, access record, and auth user", async () => {
+  it("revokes access when client has signed up: deletes profile, access record, and auth user", async () => {
     mockSupabaseClient.auth.getUser.mockResolvedValueOnce({
       data: { user: adminUser },
       error: null,
@@ -229,68 +283,26 @@ describe("revokePortalAccessAction", () => {
     expect(mockAdminAuthAdmin.deleteUser).toHaveBeenCalledWith("portal-user-1");
     expect(revalidatePath).toHaveBeenCalledWith("/clients/c1");
   });
-});
 
-// ── finalizeInviteAction ───────────────────────────────────────────────────
-
-describe("finalizeInviteAction", () => {
-  it("returns error when not authenticated", async () => {
-    const result = await finalizeInviteAction();
-    expect(result).toEqual({ error: "Not authenticated." });
-  });
-
-  it("returns slug for existing client profile", async () => {
+  it("revokes access when client was invited but never signed up (user_id null)", async () => {
     mockSupabaseClient.auth.getUser.mockResolvedValueOnce({
-      data: { user: portalUser },
+      data: { user: adminUser },
       error: null,
     });
     mockSupabaseFrom.mockReturnValueOnce(
-      makeChain({ data: { role: "client" }, error: null })
+      makeChain({ data: { tenant_id: "t1", role: "admin" }, error: null })
     );
-
-    const result = await finalizeInviteAction();
-    expect(result).toEqual({ slug: "acme" });
-  });
-
-  it("returns error when tenant_id or client_id missing in metadata", async () => {
-    const userNoMeta = { id: "u1", app_metadata: {}, user_metadata: {} };
-    mockSupabaseClient.auth.getUser.mockResolvedValueOnce({
-      data: { user: userNoMeta },
-      error: null,
-    });
-    mockSupabaseFrom.mockReturnValueOnce(makeChain({ data: null, error: null }));
-
-    const result = await finalizeInviteAction();
-    expect(result).toEqual({ error: "Invalid invite." });
-  });
-
-  it("creates profile + portal access for new invite user", async () => {
-    const inviteUser = {
-      id: "new-user",
-      email: "new@example.com",
-      app_metadata: {},
-      user_metadata: { tenant_id: "t1", client_id: "c1" },
-    };
-    mockSupabaseClient.auth.getUser.mockResolvedValueOnce({
-      data: { user: inviteUser },
-      error: null,
-    });
-    // no existing profile
-    mockSupabaseFrom.mockReturnValueOnce(makeChain({ data: null, error: null }));
-    // admin: tenant lookup
+    const accessChain = makeChain({ data: { user_id: null }, error: null });
+    const deleteAccessChain = makeChain({ data: null, error: null });
     mockAdminFrom
-      .mockReturnValueOnce(makeChain({ data: { slug: "acme" }, error: null }))
-      .mockReturnValueOnce(makeChain({ data: null, error: null })) // profiles insert
-      .mockReturnValueOnce(makeChain({ data: null, error: null })); // portal_access insert
-    mockAdminAuthAdmin.updateUserById.mockResolvedValueOnce({ error: null });
+      .mockReturnValueOnce(accessChain)
+      .mockReturnValueOnce(deleteAccessChain);
 
-    const result = await finalizeInviteAction();
-    expect(result).toEqual({ slug: "acme" });
-    expect(mockAdminAuthAdmin.updateUserById).toHaveBeenCalledWith(
-      "new-user",
-      expect.objectContaining({
-        app_metadata: expect.objectContaining({ role: "client", tenant_slug: "acme" }),
-      })
-    );
+    const result = await revokePortalAccessAction("c1");
+    expect(result).toEqual({ success: true });
+    // No profile delete or auth user delete when user_id is null
+    expect(mockAdminAuthAdmin.deleteUser).not.toHaveBeenCalled();
+    expect(deleteAccessChain.delete).toHaveBeenCalled();
+    expect(revalidatePath).toHaveBeenCalledWith("/clients/c1");
   });
 });

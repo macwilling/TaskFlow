@@ -1,110 +1,26 @@
 "use server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { Resend } from "resend";
 
-export async function inviteClientToPortalAction(
-  clientId: string,
-  _prev: { error?: string; success?: boolean } | null,
-  formData: FormData
-): Promise<{ error?: string; success?: boolean }> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Unauthorized." };
-
-  const email = (formData.get("email") as string)?.trim();
-  if (!email) return { error: "Email is required." };
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("tenant_id, role")
-    .eq("id", user.id)
-    .single();
-  if (!profile || profile.role !== "admin") return { error: "Unauthorized." };
-
-  const { data: client } = await supabase
-    .from("clients")
-    .select("id")
-    .eq("id", clientId)
-    .single();
-  if (!client) return { error: "Client not found." };
-
-  const admin = createAdminClient();
-  const { error } = await admin.auth.admin.inviteUserByEmail(email, {
-    data: { role: "client", tenant_id: profile.tenant_id, client_id: clientId },
-    redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/accept-invite`,
-  });
-
-  if (error) return { error: error.message };
-  return { success: true };
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
-export async function finalizeInviteAction(): Promise<{
-  error?: string;
-  slug?: string;
-}> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated." };
-
-  // Already has a profile — just return the slug
-  const { data: existingProfile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (existingProfile?.role === "client") {
-    const slug = user.app_metadata?.tenant_slug as string | undefined;
-    return slug ? { slug } : { error: "Missing tenant slug." };
-  }
-
-  // New client — create profile + portal access
-  const tenantId = user.user_metadata?.tenant_id as string | undefined;
-  const clientId = user.user_metadata?.client_id as string | undefined;
-  if (!tenantId || !clientId) return { error: "Invalid invite." };
-
-  const admin = createAdminClient();
-  const { data: tenant } = await admin
-    .from("tenants")
-    .select("slug")
-    .eq("id", tenantId)
-    .single();
-  if (!tenant) return { error: "Tenant not found." };
-
-  const { error: profileError } = await admin.from("profiles").insert({
-    id: user.id,
-    tenant_id: tenantId,
-    role: "client",
-    full_name:
-      (user.user_metadata?.full_name as string | undefined) ??
-      user.email?.split("@")[0] ??
-      "Client",
-  });
-  if (profileError) return { error: profileError.message };
-
-  await admin.from("client_portal_access").insert({
-    tenant_id: tenantId,
-    client_id: clientId,
-    user_id: user.id,
-    invited_at: new Date().toISOString(),
-    accepted_at: new Date().toISOString(),
-  });
-
-  await admin.auth.admin.updateUserById(user.id, {
-    app_metadata: {
-      role: "client",
-      tenant_id: tenantId,
-      tenant_slug: tenant.slug,
-    },
-  });
-
-  return { slug: tenant.slug };
-}
-
+/**
+ * Grant portal access to a client (first invite) OR resend an access link.
+ *
+ * On first call: creates a pending client_portal_access row (invited_at set,
+ * user_id + accepted_at null), generates a magic link via the Supabase admin
+ * API, and sends a branded invite email via Resend.
+ *
+ * On subsequent calls (resend): skips row creation and just regenerates a new
+ * magic link + sends the email again.
+ */
 export async function sendPortalSignInLinkAction(
   clientId: string,
   _prev: { error?: string; success?: boolean } | null
@@ -122,22 +38,14 @@ export async function sendPortalSignInLinkAction(
     .single();
   if (!profile || profile.role !== "admin") return { error: "Unauthorized." };
 
-  // Get client email and portal access
   const { data: client } = await supabase
     .from("clients")
-    .select("email")
+    .select("email, name")
     .eq("id", clientId)
     .single();
   if (!client?.email) return { error: "Client email not found." };
 
   const admin = createAdminClient();
-  const { data: access } = await admin
-    .from("client_portal_access")
-    .select("user_id")
-    .eq("client_id", clientId)
-    .eq("tenant_id", profile.tenant_id)
-    .single();
-  if (!access) return { error: "Client does not have portal access." };
 
   const { data: tenant } = await admin
     .from("tenants")
@@ -146,14 +54,81 @@ export async function sendPortalSignInLinkAction(
     .single();
   if (!tenant) return { error: "Tenant not found." };
 
-  const { error } = await supabase.auth.signInWithOtp({
+  const { data: settings } = await admin
+    .from("tenant_settings")
+    .select("business_name")
+    .eq("tenant_id", profile.tenant_id)
+    .maybeSingle();
+  const businessName = (settings?.business_name as string | null) ?? "Your consultant";
+
+  // Insert pending access row on first grant; skip on resend
+  const { data: existingAccess } = await admin
+    .from("client_portal_access")
+    .select("id")
+    .eq("client_id", clientId)
+    .eq("tenant_id", profile.tenant_id)
+    .maybeSingle();
+
+  if (!existingAccess) {
+    await admin.from("client_portal_access").insert({
+      tenant_id: profile.tenant_id,
+      client_id: clientId,
+      invited_at: new Date().toISOString(),
+      // user_id and accepted_at are intentionally null — populated on first login
+    });
+  }
+
+  // Generate magic link without sending Supabase's default email
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+  const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
+    type: "magiclink",
     email: client.email,
     options: {
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?next=/portal/${tenant.slug}`,
+      redirectTo: `${appUrl}/auth/callback?next=/portal/${tenant.slug}`,
     },
   });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const actionLink = (linkData as any)?.properties?.action_link as string | undefined;
+  if (linkError || !actionLink) {
+    return { error: (linkError as Error | null)?.message ?? "Failed to generate sign-in link." };
+  }
 
-  if (error) return { error: error.message };
+  // Send branded invite email via Resend
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const clientName = (client.name as string | null) ?? "there";
+  const subject = `Your ${businessName} portal is ready`;
+  const html = `
+    <p>Hi ${escapeHtml(clientName)},</p>
+    <p>${escapeHtml(businessName)} has given you access to your client portal.</p>
+    <p style="margin:24px 0">
+      <a href="${actionLink}" style="background:#0969da;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600">
+        Access your portal
+      </a>
+    </p>
+    <p style="color:#6e7781;font-size:12px">
+      This link expires in 1 hour. If you did not expect this email, you can ignore it.
+    </p>
+  `;
+
+  const { data: sendData, error: sendError } = await resend.emails.send({
+    from: `${businessName} <noreply@${process.env.RESEND_DOMAIN ?? "taskflow.dev"}>`,
+    to: client.email,
+    subject,
+    html,
+  });
+
+  await admin.from("email_log").insert({
+    tenant_id: profile.tenant_id,
+    to_email: client.email,
+    subject,
+    type: "portal_invite",
+    related_id: clientId,
+    resend_id: sendData?.id ?? null,
+    status: sendError ? "failed" : "sent",
+    error_message: (sendError as Error | null)?.message ?? null,
+  });
+
+  if (sendError) return { error: (sendError as Error).message };
   return { success: true };
 }
 
@@ -182,15 +157,19 @@ export async function revokePortalAccessAction(
     .single();
   if (!access) return { error: "No portal access found." };
 
-  const userId = access.user_id as string;
+  const userId = access.user_id as string | null;
 
-  await admin.from("profiles").delete().eq("id", userId);
+  // Only clean up auth user + profile if the client has actually signed up
+  if (userId) {
+    await admin.from("profiles").delete().eq("id", userId);
+    await admin.auth.admin.deleteUser(userId);
+  }
+
   await admin
     .from("client_portal_access")
     .delete()
     .eq("client_id", clientId)
     .eq("tenant_id", profile.tenant_id);
-  await admin.auth.admin.deleteUser(userId);
 
   const { revalidatePath } = await import("next/cache");
   revalidatePath(`/clients/${clientId}`);
