@@ -22,6 +22,7 @@ interface CommentThreadProps {
   taskId: string;
   currentUserId: string;
   comments: Comment[];
+  readOnly?: boolean;
 }
 
 function formatDate(iso: string) {
@@ -184,7 +185,7 @@ function CommentForm({ taskId }: { taskId: string }) {
   );
 }
 
-export function CommentThread({ taskId, currentUserId, comments }: CommentThreadProps) {
+export function CommentThread({ taskId, currentUserId, comments, readOnly = false }: CommentThreadProps) {
   return (
     <div className="space-y-3">
       <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -204,7 +205,7 @@ export function CommentThread({ taskId, currentUserId, comments }: CommentThread
         </div>
       )}
 
-      <CommentForm taskId={taskId} />
+      {!readOnly && <CommentForm taskId={taskId} />}
     </div>
   );
 }

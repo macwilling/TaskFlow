@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient, getCachedUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getImpersonationPayload } from "@/lib/portal/impersonation";
 import { TaskStatusBadge, TaskPriorityBadge } from "@/components/tasks/TaskStatusBadge";
 
 function formatDate(d: string | null) {
@@ -18,20 +19,38 @@ export default async function PortalDashboardPage({
   params: Promise<{ tenantSlug: string }>;
 }) {
   const { tenantSlug } = await params;
-  const [user, supabase] = await Promise.all([getCachedUser(), createClient()]);
 
-  // Get the client_id for this portal user
-  const { data: access } = await supabase
-    .from("client_portal_access")
-    .select("client_id")
-    .eq("user_id", user!.id)
-    .single();
+  const [user, supabase, impersonation] = await Promise.all([
+    getCachedUser(),
+    createClient(),
+    getImpersonationPayload(),
+  ]);
 
-  const clientId = access?.client_id;
+  const admin = createAdminClient();
+  const isImpersonating = !!impersonation && impersonation.tenantSlug === tenantSlug;
 
-  // Fetch tasks for this client (RLS client_tasks_select enforces access)
+  let clientId: string | undefined;
+  let tenantId: string | undefined;
+
+  if (isImpersonating) {
+    clientId = impersonation!.clientId;
+    tenantId = impersonation!.tenantId;
+  } else {
+    // Get the client_id for this portal user via RLS-scoped client
+    const { data: access } = await supabase
+      .from("client_portal_access")
+      .select("client_id")
+      .eq("user_id", user!.id)
+      .single();
+    clientId = access?.client_id;
+    tenantId = user?.app_metadata?.tenant_id as string | undefined;
+  }
+
+  // In impersonation mode use admin client (bypasses RLS); otherwise use the user's session client
+  const db = isImpersonating ? admin : supabase;
+
   const { data: tasks } = clientId
-    ? await supabase
+    ? await db
         .from("tasks")
         .select("id, title, status, priority, due_date, created_at")
         .eq("client_id", clientId)
@@ -40,17 +59,13 @@ export default async function PortalDashboardPage({
 
   // Fetch welcome message if no tasks
   let welcomeMessage: string | null = null;
-  if (!tasks?.length) {
-    const admin = createAdminClient();
-    const tenantId = user!.app_metadata?.tenant_id as string | undefined;
-    if (tenantId) {
-      const { data: settings } = await admin
-        .from("tenant_settings")
-        .select("portal_welcome_message")
-        .eq("tenant_id", tenantId)
-        .single();
-      welcomeMessage = settings?.portal_welcome_message ?? null;
-    }
+  if (!tasks?.length && tenantId) {
+    const { data: settings } = await admin
+      .from("tenant_settings")
+      .select("portal_welcome_message")
+      .eq("tenant_id", tenantId)
+      .single();
+    welcomeMessage = settings?.portal_welcome_message ?? null;
   }
 
   return (

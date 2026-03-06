@@ -7,11 +7,31 @@ vi.mock("@/lib/supabase/middleware", () => ({
 
 import { updateSession } from "@/lib/supabase/middleware";
 import { proxy } from "@/proxy";
+import { encodePayload, makePayload, IMPERSONATION_COOKIE } from "@/lib/portal/impersonation";
 
 const fakeResponse = new NextResponse(null, { status: 200 });
 
-function makeRequest(pathname: string): NextRequest {
-  return new NextRequest(`http://localhost:3000${pathname}`);
+function makeRequest(pathname: string, cookies?: Record<string, string>): NextRequest {
+  const req = new NextRequest(`http://localhost:3000${pathname}`);
+  if (cookies) {
+    Object.entries(cookies).forEach(([name, value]) => {
+      req.cookies.set(name, value);
+    });
+  }
+  return req;
+}
+
+function validImpersonationCookie(tenantSlug: string): string {
+  return encodePayload(
+    makePayload({
+      clientId: "c1",
+      userId: "portal-u1",
+      tenantId: "t1",
+      tenantSlug,
+      clientName: "Acme Corp",
+      adminUserId: "admin-1",
+    })
+  );
 }
 
 function mockSession(user: Record<string, unknown> | null) {
@@ -110,9 +130,23 @@ describe("proxy: portal routes", () => {
     expect(res).toBe(fakeResponse);
   });
 
-  it("redirects admin role accessing portal to portal login", async () => {
+  it("redirects admin role accessing portal to portal login (no cookie)", async () => {
     mockSession({ id: "u1", app_metadata: { role: "admin" } });
     const res = await proxy(makeRequest("/portal/acme/tasks"));
+    expect(res.headers.get("location")).toContain("/portal/acme/login");
+  });
+
+  it("allows admin with valid impersonation cookie through portal route", async () => {
+    mockSession({ id: "admin-1", app_metadata: { role: "admin" } });
+    const cookie = validImpersonationCookie("acme");
+    const res = await proxy(makeRequest("/portal/acme", { [IMPERSONATION_COOKIE]: cookie }));
+    expect(res).toBe(fakeResponse);
+  });
+
+  it("blocks admin with impersonation cookie for wrong slug", async () => {
+    mockSession({ id: "admin-1", app_metadata: { role: "admin" } });
+    const cookie = validImpersonationCookie("other-co");
+    const res = await proxy(makeRequest("/portal/acme", { [IMPERSONATION_COOKIE]: cookie }));
     expect(res.headers.get("location")).toContain("/portal/acme/login");
   });
 
