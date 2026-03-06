@@ -6,6 +6,8 @@ export type AuditEventType =
   | "created"
   | "status_changed"
   | "title_changed"
+  | "description_changed"
+  | "resolution_notes_changed"
   | "comment_added"
   | "attachment_added"
   | "attachment_deleted";

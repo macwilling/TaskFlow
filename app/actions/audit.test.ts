@@ -81,4 +81,46 @@ describe("logTaskEvent", () => {
       })
     );
   });
+
+  it("accepts description_changed event type with snippet metadata", async () => {
+    const chain = makeChain({ data: null, error: null });
+    mockSupabaseFrom.mockReturnValueOnce(chain);
+
+    await logTaskEvent({
+      tenantId: "t",
+      taskId: "tk",
+      actorId: "u",
+      actorRole: "admin",
+      eventType: "description_changed",
+      metadata: { snippet: "## Updated description" },
+    });
+
+    expect(chain.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event_type: "description_changed",
+        metadata: { snippet: "## Updated description" },
+      })
+    );
+  });
+
+  it("accepts resolution_notes_changed event type with snippet metadata", async () => {
+    const chain = makeChain({ data: null, error: null });
+    mockSupabaseFrom.mockReturnValueOnce(chain);
+
+    await logTaskEvent({
+      tenantId: "t",
+      taskId: "tk",
+      actorId: "u",
+      actorRole: "admin",
+      eventType: "resolution_notes_changed",
+      metadata: { snippet: "Fixed by updating config" },
+    });
+
+    expect(chain.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event_type: "resolution_notes_changed",
+        metadata: { snippet: "Fixed by updating config" },
+      })
+    );
+  });
 });
