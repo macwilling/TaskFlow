@@ -58,6 +58,7 @@ interface InvoiceBuilderClientProps {
   invoiceNumberNext: number;
   taxLabel: string;
   paymentMethodOptions: string[];
+  defaultClientId?: string;
   // Pre-populated for edit mode
   initialData?: {
     clientId: string;
@@ -113,6 +114,7 @@ export function InvoiceBuilderClient({
   invoiceNumberPrefix,
   invoiceNumberNext,
   taxLabel,
+  defaultClientId,
   initialData,
   formAction,
 }: InvoiceBuilderClientProps) {
@@ -121,7 +123,7 @@ export function InvoiceBuilderClient({
     new Date(Date.now() + defaultPaymentTerms * 24 * 60 * 60 * 1000)
   );
 
-  const [selectedClientId, setSelectedClientId] = useState(initialData?.clientId ?? "");
+  const [selectedClientId, setSelectedClientId] = useState(initialData?.clientId ?? defaultClientId ?? "");
   const [issueDate, setIssueDate] = useState(initialData?.issueDate ?? today);
   const [dueDate, setDueDate] = useState(initialData?.dueDate ?? defaultDue);
   const [memo, setMemo] = useState(initialData?.memo ?? "");

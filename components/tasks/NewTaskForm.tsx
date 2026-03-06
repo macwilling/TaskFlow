@@ -30,7 +30,7 @@ function SubmitButton() {
   );
 }
 
-export function NewTaskForm({ clients }: { clients: Client[] }) {
+export function NewTaskForm({ clients, defaultClientId }: { clients: Client[]; defaultClientId?: string }) {
   const [state, formAction] = useActionState(createTaskAction, null);
 
   return (
@@ -42,7 +42,7 @@ export function NewTaskForm({ clients }: { clients: Client[] }) {
 
       <div className="space-y-1.5">
         <Label htmlFor="client_id">Client <span className="text-destructive">*</span></Label>
-        <Select name="client_id" required>
+        <Select name="client_id" required defaultValue={defaultClientId}>
           <SelectTrigger id="client_id" className="h-8 text-sm">
             <SelectValue placeholder="Select a client" />
           </SelectTrigger>
