@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCachedUser } from "@/lib/supabase/server";
 import { TopBar } from "@/components/layout/TopBar";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Separator } from "@/components/ui/separator";
@@ -192,13 +192,6 @@ export default async function TaskDetailPage({
   params: Promise<{ taskKey: string }>;
 }) {
   const { taskKey } = await params;
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) notFound();
 
   // Parse "AC-42" → clientKey="AC", taskNumber=42
   const dashIdx = taskKey.lastIndexOf("-");
@@ -207,15 +200,18 @@ export default async function TaskDetailPage({
   const taskNumber = parseInt(taskKey.slice(dashIdx + 1), 10);
   if (!clientKey || isNaN(taskNumber)) notFound();
 
-  // Look up the client first (scoped to the user's tenant via RLS)
-  const { data: clientRow } = await supabase
-    .from("clients")
-    .select("id")
-    .eq("client_key", clientKey)
-    .single();
+  // getCachedUser() is free — already called by the layout in this render.
+  // Client lookup only needs clientKey (from URL), so both can run in parallel.
+  const supabase = await createClient();
+  const [user, { data: clientRow }] = await Promise.all([
+    getCachedUser(),
+    supabase.from("clients").select("id").eq("client_key", clientKey).single(),
+  ]);
 
+  if (!user) notFound();
   if (!clientRow) notFound();
 
+  // Task query needs clientRow.id; profile query needs user.id — both ready now.
   const [{ data: task, error }, { data: profile }] = await Promise.all([
     supabase
       .from("tasks")
