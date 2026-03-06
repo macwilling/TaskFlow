@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCachedUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { TaskStatusBadge, TaskPriorityBadge } from "@/components/tasks/TaskStatusBadge";
 
@@ -18,11 +18,7 @@ export default async function PortalDashboardPage({
   params: Promise<{ tenantSlug: string }>;
 }) {
   const { tenantSlug } = await params;
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const [user, supabase] = await Promise.all([getCachedUser(), createClient()]);
 
   // Get the client_id for this portal user
   const { data: access } = await supabase

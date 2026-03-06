@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { TopBar } from "@/components/layout/TopBar";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Separator } from "@/components/ui/separator";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCachedUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { BusinessInfoForm } from "@/components/settings/BusinessInfoForm";
 import { BrandingForm } from "@/components/settings/BrandingForm";
@@ -11,10 +11,7 @@ import { EmailTemplatesForm } from "@/components/settings/EmailTemplatesForm";
 import { TenantSlugForm } from "@/components/settings/TenantSlugForm";
 
 export default async function SettingsPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const [user, supabase] = await Promise.all([getCachedUser(), createClient()]);
   if (!user || user.app_metadata?.role !== "admin") redirect("/auth/login");
 
   const { data: profile } = await supabase

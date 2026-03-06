@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCachedUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PortalSignOutButton } from "@/components/portal/PortalSignOutButton";
 
@@ -13,11 +13,11 @@ export default async function PortalLayout({
   const { tenantSlug } = await params;
 
   const admin = createAdminClient();
-  const { data: tenant } = await admin
-    .from("tenants")
-    .select("id, slug")
-    .eq("slug", tenantSlug)
-    .single();
+  // Tenant lookup and user fetch can run in parallel — neither depends on the other.
+  const [{ data: tenant }, user] = await Promise.all([
+    admin.from("tenants").select("id, slug").eq("slug", tenantSlug).single(),
+    getCachedUser(),
+  ]);
 
   if (!tenant) redirect("/auth/login?error=auth_callback_error");
 
@@ -26,11 +26,6 @@ export default async function PortalLayout({
     .select("business_name")
     .eq("tenant_id", tenant.id)
     .single();
-
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
   // Auth check: must be a client belonging to this tenant
   if (

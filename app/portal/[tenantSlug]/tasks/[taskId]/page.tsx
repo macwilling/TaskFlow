@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCachedUser } from "@/lib/supabase/server";
 import { Separator } from "@/components/ui/separator";
 import { TaskStatusBadge, TaskPriorityBadge } from "@/components/tasks/TaskStatusBadge";
 import { CommentThread } from "@/components/comments/CommentThread";
@@ -22,35 +22,35 @@ export default async function PortalTaskPage({
   params: Promise<{ tenantSlug: string; taskId: string }>;
 }) {
   const { tenantSlug, taskId } = await params;
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const [user, supabase] = await Promise.all([getCachedUser(), createClient()]);
   if (!user) notFound();
 
-  // Fetch task — RLS client_tasks_select enforces access
-  const { data: task, error } = await supabase
-    .from("tasks")
-    .select("id, title, status, priority, due_date, description, resolution_notes, created_at, closed_at")
-    .eq("id", taskId)
-    .single();
+  // All three queries are independent — run them in parallel.
+  const [
+    { data: task, error },
+    { data: comments },
+    { data: auditEntries },
+  ] = await Promise.all([
+    supabase
+      .from("tasks")
+      .select("id, title, status, priority, due_date, description, resolution_notes, created_at, closed_at")
+      .eq("id", taskId)
+      .single(),
+    // Fetch comments — RLS client_comments_select enforces access
+    supabase
+      .from("comments")
+      .select("id, body, author_role, author_id, created_at")
+      .eq("task_id", taskId)
+      .order("created_at", { ascending: true }),
+    // Fetch audit log — RLS client_audit_log_select filters to non-sensitive events
+    supabase
+      .from("task_audit_log")
+      .select("id, actor_role, event_type, old_value, new_value, metadata, created_at")
+      .eq("task_id", taskId)
+      .order("created_at", { ascending: false }),
+  ]);
 
   if (error || !task) notFound();
-
-  // Fetch comments — RLS client_comments_select enforces access
-  const { data: comments } = await supabase
-    .from("comments")
-    .select("id, body, author_role, author_id, created_at")
-    .eq("task_id", taskId)
-    .order("created_at", { ascending: true });
-
-  // Fetch audit log — RLS client_audit_log_select filters to non-sensitive events
-  const { data: auditEntries } = await supabase
-    .from("task_audit_log")
-    .select("id, actor_role, event_type, old_value, new_value, metadata, created_at")
-    .eq("task_id", taskId)
-    .order("created_at", { ascending: false });
 
   const isClosed = task.status === "closed";
 

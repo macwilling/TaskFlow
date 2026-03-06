@@ -1,7 +1,10 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { cache } from "react";
 
-export async function createClient() {
+// Memoized per-request: returns the same client instance for all Server
+// Components in a single render, avoiding redundant cookie reads.
+export const createClient = cache(async () => {
   const cookieStore = await cookies();
 
   return createServerClient(
@@ -24,4 +27,14 @@ export async function createClient() {
       },
     }
   );
-}
+});
+
+// Memoized per-request: the Auth server is only contacted once per render,
+// regardless of how many layouts/pages call getCachedUser().
+export const getCachedUser = cache(async () => {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user;
+});
