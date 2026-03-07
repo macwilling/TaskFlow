@@ -3,12 +3,14 @@
 import { useCallback, useRef, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
-import timeGridPlugin from "@fullcalendar/timegrid";
+import listPlugin from "@fullcalendar/list";
 import interactionPlugin from "@fullcalendar/interaction";
 import type { DateClickArg } from "@fullcalendar/interaction";
-import type { EventClickArg, EventSourceFuncArg, EventDropArg } from "@fullcalendar/core";
+import type { EventApi, EventClickArg, EventSourceFuncArg, EventDropArg } from "@fullcalendar/core";
 import { updateTimeEntryDateAction } from "@/app/actions/time";
 import { TimeEntryModal, TimeEntryData } from "@/components/time/TimeEntryModal";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface Client {
@@ -36,6 +38,7 @@ export function TimeCalendar({ clients, tasks }: TimeCalendarProps) {
   const [modalOpen, setModalOpen] = useState(false);
   const [prefillDate, setPrefillDate] = useState<string | undefined>();
   const [editEntry, setEditEntry] = useState<TimeEntryData | undefined>();
+  const [dayHours, setDayHours] = useState<Record<string, number>>({});
 
   const fetchEvents = useCallback(
     async (info: EventSourceFuncArg, successCallback: (events: object[]) => void, failureCallback: (error: Error) => void) => {
@@ -53,10 +56,25 @@ export function TimeCalendar({ clients, tasks }: TimeCalendarProps) {
     []
   );
 
-  function handleDateClick(arg: DateClickArg) {
+  function handleEventsSet(events: EventApi[]) {
+    const totals: Record<string, number> = {};
+    events.forEach((ev) => {
+      const date = ev.start?.toISOString().split("T")[0];
+      if (date) {
+        totals[date] = (totals[date] ?? 0) + ((ev.extendedProps.durationHours as number) ?? 0);
+      }
+    });
+    setDayHours(totals);
+  }
+
+  function openCreate(date?: string) {
     setEditEntry(undefined);
-    setPrefillDate(arg.dateStr);
+    setPrefillDate(date ?? new Date().toISOString().split("T")[0]);
     setModalOpen(true);
+  }
+
+  function handleDateClick(arg: DateClickArg) {
+    openCreate(arg.dateStr);
   }
 
   function handleEventClick(arg: EventClickArg) {
@@ -85,33 +103,51 @@ export function TimeCalendar({ clients, tasks }: TimeCalendarProps) {
 
   function handleSuccess() {
     router.refresh();
-    // Refetch calendar events
-    const api = calendarRef.current?.getApi();
-    api?.refetchEvents();
+    calendarRef.current?.getApi().refetchEvents();
   }
 
   return (
     <>
-      <div className="fc-wrapper [&_.fc-toolbar-title]:text-base [&_.fc-toolbar-title]:font-semibold [&_.fc-button]:text-xs [&_.fc-button]:capitalize [&_.fc-button-primary]:bg-primary [&_.fc-button-primary]:border-primary [&_.fc-button-primary:hover]:opacity-90 [&_.fc-button-primary:not(.fc-button-active)]:bg-muted [&_.fc-button-primary:not(.fc-button-active)]:text-foreground [&_.fc-button-primary:not(.fc-button-active)]:border-border [&_.fc-button-primary:not(.fc-button-active):hover]:bg-accent [&_.fc-daygrid-day-number]:text-xs [&_.fc-col-header-cell-cushion]:text-xs [&_.fc-col-header-cell-cushion]:font-medium [&_.fc-event]:cursor-pointer [&_.fc-event-title]:truncate">
-        <FullCalendar
-          ref={calendarRef}
-          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-          initialView="dayGridWeek"
-          headerToolbar={{
-            left: "prev,next today",
-            center: "title",
-            right: "dayGridMonth,dayGridWeek,timeGridWeek",
-          }}
-          events={fetchEvents}
-          editable={true}
-          eventDrop={handleEventDrop}
-          dateClick={handleDateClick}
-          eventClick={handleEventClick}
-          height="auto"
-          dayMaxEvents={4}
-          eventTimeFormat={{ hour: "numeric", minute: "2-digit" }}
-        />
+      <div className="mb-3 flex justify-end">
+        <Button size="sm" className="h-7 gap-1 text-xs" onClick={() => openCreate()}>
+          <Plus className="h-3.5 w-3.5" />
+          Log time
+        </Button>
       </div>
+
+      <FullCalendar
+        ref={calendarRef}
+        plugins={[dayGridPlugin, listPlugin, interactionPlugin]}
+        initialView="dayGridWeek"
+        headerToolbar={{
+          left: "prev,next today",
+          center: "title",
+          right: "dayGridMonth,dayGridWeek,listWeek",
+        }}
+        views={{
+          listWeek: { buttonText: "Agenda" },
+        }}
+        events={fetchEvents}
+        eventsSet={handleEventsSet}
+        editable={true}
+        eventDrop={handleEventDrop}
+        dateClick={handleDateClick}
+        eventClick={handleEventClick}
+        height="auto"
+        dayMaxEvents={4}
+        dayCellContent={(arg) => {
+          const dateStr = arg.date.toISOString().split("T")[0];
+          const hours = dayHours[dateStr];
+          return (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", width: "100%" }}>
+              <span className="fc-daygrid-day-number">{arg.dayNumberText}</span>
+              {hours != null && hours > 0 && (
+                <span className="fc-day-hours">{hours % 1 === 0 ? hours : hours.toFixed(1)}h</span>
+              )}
+            </div>
+          );
+        }}
+      />
 
       <TimeEntryModal
         open={modalOpen}
