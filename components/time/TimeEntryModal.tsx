@@ -26,6 +26,7 @@ export interface TimeEntryData {
   clientId: string;
   taskId: string | null;
   entryDate: string;
+  startTime: string | null;
   durationHours: number;
   billable: boolean;
   hourlyRate: number | null;
@@ -52,6 +53,7 @@ interface TimeEntryModalProps {
   tasks: Task[];
   // Pre-fill values
   prefillDate?: string;
+  prefillTime?: string;
   prefillClientId?: string;
   prefillTaskId?: string;
   // Edit mode
@@ -69,6 +71,7 @@ export function TimeEntryModal({
   clients,
   tasks,
   prefillDate,
+  prefillTime,
   prefillClientId,
   prefillTaskId,
   entry,
@@ -81,6 +84,7 @@ export function TimeEntryModal({
   const [taskId, setTaskId] = useState(entry?.taskId ?? prefillTaskId ?? "");
   const [description, setDescription] = useState(entry?.description ?? "");
   const [entryDate, setEntryDate] = useState(entry?.entryDate ?? prefillDate ?? todayISO());
+  const [startTime, setStartTime] = useState(entry?.startTime ?? prefillTime ?? "");
   const [durationHours, setDurationHours] = useState(
     entry?.durationHours != null ? String(entry.durationHours) : "1"
   );
@@ -98,6 +102,7 @@ export function TimeEntryModal({
         setTaskId(entry.taskId ?? "");
         setDescription(entry.description);
         setEntryDate(entry.entryDate);
+        setStartTime(entry.startTime ?? "");
         setDurationHours(String(entry.durationHours));
         setBillable(entry.billable);
         setHourlyRate(entry.hourlyRate != null ? String(entry.hourlyRate) : "");
@@ -106,6 +111,7 @@ export function TimeEntryModal({
         setTaskId(prefillTaskId ?? "");
         setDescription("");
         setEntryDate(prefillDate ?? todayISO());
+        setStartTime(prefillTime ?? "");
         setDurationHours("1");
         setBillable(true);
         setHourlyRate("");
@@ -138,12 +144,28 @@ export function TimeEntryModal({
 
   const clientTasks = tasks.filter((t) => t.client_id === clientId);
 
+  // Compute end time display from start + duration
+  const endTimeDisplay = (() => {
+    if (!startTime || !durationHours) return null;
+    const dur = parseFloat(durationHours);
+    if (isNaN(dur) || dur <= 0) return null;
+    const [h, m] = startTime.split(":").map(Number);
+    const totalMins = h * 60 + m + Math.round(dur * 60);
+    const endH = Math.floor(totalMins / 60) % 24;
+    const endM = totalMins % 60;
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const ampm = endH >= 12 ? "PM" : "AM";
+    const h12 = endH % 12 || 12;
+    return `${h12}:${pad(endM)} ${ampm}`;
+  })();
+
   function buildInput() {
     return {
       client_id: clientId,
       task_id: taskId || null,
       description: description.trim(),
       entry_date: entryDate,
+      start_time: startTime || null,
       duration_hours: parseFloat(durationHours) || 0,
       billable,
       hourly_rate: hourlyRate ? parseFloat(hourlyRate) : null,
@@ -250,8 +272,8 @@ export function TimeEntryModal({
             />
           </div>
 
-          {/* Date + Duration */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Date · Start · Hours */}
+          <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="te-date">Date</Label>
               <Input
@@ -259,6 +281,17 @@ export function TimeEntryModal({
                 type="date"
                 value={entryDate}
                 onChange={(e) => setEntryDate(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="te-start">
+                Start <span className="text-muted-foreground font-normal text-xs">(opt.)</span>
+              </Label>
+              <Input
+                id="te-start"
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
               />
             </div>
             <div className="space-y-1.5">
@@ -274,6 +307,13 @@ export function TimeEntryModal({
               />
             </div>
           </div>
+
+          {/* End time hint */}
+          {endTimeDisplay && (
+            <p className="text-xs text-muted-foreground -mt-2">
+              Ends at {endTimeDisplay}
+            </p>
+          )}
 
           {/* Hourly rate */}
           <div className="space-y-1.5">

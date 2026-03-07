@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { TimeEntryModal, TimeEntryData } from "@/components/time/TimeEntryModal";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ interface TimeEntry {
   id: string;
   description: string;
   entry_date: string;
+  start_time: string | null;
   duration_hours: number;
   billable: boolean;
   billed: boolean;
@@ -38,6 +39,13 @@ interface TimeEntryListProps {
   clients: Client[];
   tasks: Task[];
   totalHours: number;
+}
+
+function formatTime(t: string) {
+  const [h, m] = t.split(":").map(Number);
+  const ampm = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 || 12;
+  return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
 }
 
 export function TimeEntryList({ entries, clients, tasks, totalHours }: TimeEntryListProps) {
@@ -57,6 +65,7 @@ export function TimeEntryList({ entries, clients, tasks, totalHours }: TimeEntry
       clientId: entry.client_id,
       taskId: entry.task_id,
       entryDate: entry.entry_date,
+      startTime: entry.start_time ?? null,
       durationHours: Number(entry.duration_hours),
       billable: entry.billable,
       hourlyRate: entry.hourly_rate,
@@ -113,11 +122,16 @@ export function TimeEntryList({ entries, clients, tasks, totalHours }: TimeEntry
                     onClick={() => openEdit(entry)}
                   >
                     <td className="px-3 py-2.5 tabular-nums text-muted-foreground whitespace-nowrap">
-                      {new Date(entry.entry_date + "T00:00:00").toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
+                      <div>
+                        {new Date(entry.entry_date + "T00:00:00").toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </div>
+                      {entry.start_time && (
+                        <div className="text-xs mt-0.5">{formatTime(entry.start_time)}</div>
+                      )}
                     </td>
                     <td className="px-3 py-2.5">
                       <div className="flex items-center gap-1.5">
