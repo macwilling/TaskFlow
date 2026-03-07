@@ -3,6 +3,7 @@ import { TopBar } from "@/components/layout/TopBar";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Separator } from "@/components/ui/separator";
 import { createClient, getCachedUser } from "@/lib/supabase/server";
+import { ReportsFilterForm } from "./ReportsFilterForm";
 
 interface SearchParams {
   start?: string;
@@ -185,38 +186,7 @@ export default async function ReportsPage({
         <div className="space-y-10">
 
           {/* Date range filter */}
-          <form method="GET" className="flex items-end gap-3">
-            <div className="space-y-1">
-              <label htmlFor="start" className="text-xs font-medium text-muted-foreground">
-                From
-              </label>
-              <input
-                id="start"
-                name="start"
-                type="date"
-                defaultValue={start}
-                className="h-9 rounded-md border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
-            <div className="space-y-1">
-              <label htmlFor="end" className="text-xs font-medium text-muted-foreground">
-                To
-              </label>
-              <input
-                id="end"
-                name="end"
-                type="date"
-                defaultValue={end}
-                className="h-9 rounded-md border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
-            <button
-              type="submit"
-              className="h-9 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-            >
-              Apply
-            </button>
-          </form>
+          <ReportsFilterForm defaultStart={start} defaultEnd={end} />
 
           <Separator />
 
