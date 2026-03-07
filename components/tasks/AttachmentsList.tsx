@@ -6,7 +6,11 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
 } from "@/components/ui/dialog";
 import {
   Paperclip,
@@ -87,6 +91,7 @@ export function AttachmentsList({ taskId, tenantId, attachments }: AttachmentsLi
   const [isPending, startTransition] = useTransition();
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [lightboxName, setLightboxName] = useState<string>("");
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -135,10 +140,11 @@ export function AttachmentsList({ taskId, tenantId, attachments }: AttachmentsLi
     }
   }
 
-  function handleDelete(attachmentId: string) {
-    if (!confirm("Delete this attachment?")) return;
+  function handleDeleteConfirm() {
+    if (!deleteId) return;
     startTransition(async () => {
-      await deleteAttachmentAction(attachmentId, taskId);
+      await deleteAttachmentAction(deleteId, taskId);
+      setDeleteId(null);
     });
   }
 
@@ -235,7 +241,7 @@ export function AttachmentsList({ taskId, tenantId, attachments }: AttachmentsLi
                   <button
                     type="button"
                     className="flex h-6 w-6 items-center justify-center rounded bg-white/20 text-white hover:bg-red-500/80 transition-colors"
-                    onClick={() => handleDelete(a.id)}
+                    onClick={() => setDeleteId(a.id)}
                     disabled={isPending}
                     title="Delete"
                   >
@@ -262,6 +268,33 @@ export function AttachmentsList({ taskId, tenantId, attachments }: AttachmentsLi
           ))}
         </div>
       )}
+
+      {/* Delete confirm */}
+      <Dialog open={!!deleteId} onOpenChange={(open) => { if (!open) setDeleteId(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete this attachment?</DialogTitle>
+            <DialogDescription>
+              This will permanently remove the file. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline" size="sm" disabled={isPending}>
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={isPending}
+              onClick={handleDeleteConfirm}
+            >
+              {isPending ? "Deleting…" : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Lightbox */}
       <Dialog open={!!lightboxUrl} onOpenChange={(open) => { if (!open) setLightboxUrl(null); }}>

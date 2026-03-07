@@ -8,6 +8,15 @@ import {
 } from "@/app/actions/comments";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
 import { Pencil, Trash2 } from "lucide-react";
 
 interface Comment {
@@ -48,12 +57,13 @@ function CommentRow({
   const [editing, setEditing] = useState(false);
   const [editBody, setEditBody] = useState(comment.body);
   const [editError, setEditError] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const isOwn = comment.author_id === currentUserId;
 
-  function handleDelete() {
-    if (!confirm("Delete this comment?")) return;
+  function handleDeleteConfirm() {
     startTransition(async () => {
       await deleteCommentAction(comment.id, taskId);
+      setDeleteOpen(false);
     });
   }
 
@@ -140,7 +150,7 @@ function CommentRow({
             variant="ghost"
             size="sm"
             className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
-            onClick={handleDelete}
+            onClick={() => setDeleteOpen(true)}
             disabled={isPending}
             aria-label="Delete comment"
           >
@@ -148,6 +158,32 @@ function CommentRow({
           </Button>
         </div>
       )}
+
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete this comment?</DialogTitle>
+            <DialogDescription>
+              This will permanently remove the comment. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline" size="sm" disabled={isPending}>
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={isPending}
+              onClick={handleDeleteConfirm}
+            >
+              {isPending ? "Deleting…" : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
