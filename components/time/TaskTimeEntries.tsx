@@ -66,6 +66,7 @@ export function TaskTimeEntries({
       clientId,
       taskId,
       entryDate: entry.entry_date,
+      startTime: null,
       durationHours: Number(entry.duration_hours),
       billable: entry.billable,
       hourlyRate: entry.hourly_rate,
