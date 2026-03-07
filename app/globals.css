@@ -79,6 +79,132 @@
   }
 }
 
+/* ── FullCalendar overrides ──────────────────────────── */
+
+/* Map FullCalendar color tokens to our design-system CSS variables.
+   Since our vars already change under .dark { }, dark mode is automatic. */
+.fc {
+  --fc-border-color: hsl(var(--border));
+  --fc-button-bg-color: hsl(var(--muted));
+  --fc-button-border-color: hsl(var(--border));
+  --fc-button-text-color: hsl(var(--foreground));
+  --fc-button-hover-bg-color: hsl(var(--accent));
+  --fc-button-hover-border-color: hsl(var(--border));
+  --fc-button-active-bg-color: hsl(var(--primary));
+  --fc-button-active-border-color: hsl(var(--primary));
+  --fc-button-active-text-color: hsl(var(--primary-foreground));
+  --fc-today-bg-color: hsl(var(--primary) / 0.06);
+  --fc-page-bg-color: hsl(var(--background));
+  --fc-neutral-bg-color: hsl(var(--muted));
+  --fc-neutral-text-color: hsl(var(--muted-foreground));
+  --fc-list-event-hover-bg-color: hsl(var(--accent));
+  --fc-event-bg-color: hsl(var(--primary));
+  --fc-event-border-color: hsl(var(--primary));
+  --fc-event-text-color: hsl(var(--primary-foreground));
+  --fc-highlight-color: hsl(var(--primary) / 0.1);
+  font-family: var(--font-geist-sans, system-ui, -apple-system, sans-serif);
+  font-size: 0.875rem;
+}
+
+/* Buttons: match shadcn button sizing and border-radius */
+.fc .fc-button {
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.25rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: var(--radius);
+  box-shadow: none;
+  text-transform: capitalize;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.fc .fc-button:focus {
+  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.4);
+  outline: none;
+}
+
+.fc .fc-button-primary:not(:disabled).fc-button-active,
+.fc .fc-button-primary:not(:disabled):active {
+  background-color: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+/* Toolbar */
+.fc .fc-toolbar.fc-header-toolbar {
+  margin-bottom: 0.75rem;
+}
+
+.fc .fc-toolbar-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+/* Column headers */
+.fc .fc-col-header-cell-cushion {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground));
+  text-decoration: none;
+}
+
+/* Day numbers */
+.fc .fc-daygrid-day-number {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+  text-decoration: none;
+}
+
+.fc .fc-day-today .fc-daygrid-day-number {
+  color: hsl(var(--primary));
+  font-weight: 600;
+}
+
+/* Events */
+.fc .fc-event {
+  cursor: pointer;
+  font-size: 0.7rem;
+  border-radius: calc(var(--radius) - 2px);
+}
+
+.fc .fc-event-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Per-day hour total (rendered via dayCellContent) */
+.fc .fc-day-hours {
+  font-size: 0.65rem;
+  font-variant-numeric: tabular-nums;
+  color: hsl(var(--muted-foreground));
+  padding-right: 0.25rem;
+}
+
+/* List view */
+.fc .fc-list-event:hover td {
+  background-color: hsl(var(--accent));
+  cursor: pointer;
+}
+
+.fc .fc-list-day-cushion {
+  background-color: hsl(var(--muted) / 0.5);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.fc .fc-list-event-title a {
+  color: hsl(var(--foreground));
+  text-decoration: none;
+}
+
+.fc .fc-list-empty {
+  background-color: hsl(var(--background));
+  color: hsl(var(--muted-foreground));
+  font-size: 0.875rem;
+}
+
 /* ── Milkdown Crepe editor overrides ─────────────────── */
 
 /* Map Crepe color tokens to our design-system CSS variables.
