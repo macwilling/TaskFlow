@@ -24,11 +24,13 @@ function makeRequest(search: Record<string, string> = {}) {
 const adminUser = { id: "user-1", app_metadata: { role: "admin" } };
 const clientUser = { id: "user-2", app_metadata: { role: "client" } };
 
+// All-day entries (no start_time)
 const TIME_ENTRIES = [
   {
     id: "te-1",
     description: "API work",
     entry_date: "2026-03-01",
+    start_time: null,
     duration_hours: "2.5",
     billable: true,
     billed: false,
@@ -42,6 +44,7 @@ const TIME_ENTRIES = [
     id: "te-2",
     description: "Meeting",
     entry_date: "2026-03-02",
+    start_time: null,
     duration_hours: "1",
     billable: true,
     billed: false,
@@ -52,6 +55,22 @@ const TIME_ENTRIES = [
     tasks: null,
   },
 ];
+
+// Timed entry (has start_time)
+const TIMED_ENTRY = {
+  id: "te-3",
+  description: "Design review",
+  entry_date: "2026-03-03",
+  start_time: "14:00:00",
+  duration_hours: "1.5",
+  billable: true,
+  billed: false,
+  hourly_rate: "150.00",
+  client_id: "client-1",
+  task_id: null,
+  clients: { name: "Acme", color: "#0969da" },
+  tasks: null,
+};
 
 /** Builds a mock Supabase query chain that resolves with the given rows. */
 function buildQueryChain(rows: unknown[], error: { message: string } | null = null) {
@@ -107,7 +126,7 @@ describe("GET /api/time-entries", () => {
     expect(json.error).toMatch(/start and end required/i);
   });
 
-  it("returns FullCalendar event objects in calendar mode (start+end)", async () => {
+  it("returns allDay FullCalendar events when entries have no start_time", async () => {
     mockGetUser.mockResolvedValueOnce({ data: { user: adminUser } });
     mockFrom.mockReturnValueOnce(buildQueryChain(TIME_ENTRIES));
 
@@ -126,13 +145,37 @@ describe("GET /api/time-entries", () => {
       allDay: true,
       backgroundColor: "#0969da",
     });
+    expect(first).not.toHaveProperty("end");
     expect(first.title).toContain("Acme");
     expect(first.title).toContain("2.50h");
     expect(first.extendedProps).toMatchObject({
       durationHours: 2.5,
       billable: true,
       billed: false,
+      startTime: null,
     });
+  });
+
+  it("returns timed FullCalendar events when entries have start_time", async () => {
+    mockGetUser.mockResolvedValueOnce({ data: { user: adminUser } });
+    mockFrom.mockReturnValueOnce(buildQueryChain([TIMED_ENTRY]));
+
+    const { GET } = await import("./route");
+    const res = await GET(makeRequest({ start: "2026-03-01", end: "2026-03-31" }));
+    expect(res.status).toBe(200);
+    const events = await res.json();
+
+    expect(events).toHaveLength(1);
+    const ev = events[0];
+    expect(ev).toMatchObject({
+      id: "te-3",
+      start: "2026-03-03T14:00",
+      allDay: false,
+    });
+    // End should be start + 1.5h = 15:30
+    expect(ev.end).toBe("2026-03-03T15:30");
+    expect(ev.extendedProps.startTime).toBe("14:00");
+    expect(ev.extendedProps.durationHours).toBe(1.5);
   });
 
   it("returns raw entry objects in invoice builder mode (client param, no dates)", async () => {
@@ -151,6 +194,7 @@ describe("GET /api/time-entries", () => {
     // Invoice mode returns raw shape — no FullCalendar-specific keys
     expect(first).toHaveProperty("id");
     expect(first).toHaveProperty("entry_date");
+    expect(first).toHaveProperty("start_time");
     expect(first).toHaveProperty("duration_hours");
     expect(first.duration_hours).toBe(2.5); // cast to Number
     expect(first).not.toHaveProperty("title");

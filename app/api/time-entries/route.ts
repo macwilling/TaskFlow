@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
 
   let query = supabase
     .from("time_entries")
-    .select("id, description, entry_date, duration_hours, billable, billed, hourly_rate, client_id, task_id, clients(name, color), tasks(title)")
+    .select("id, description, entry_date, start_time, duration_hours, billable, billed, hourly_rate, client_id, task_id, clients(name, color), tasks(title)")
     .order("entry_date", { ascending: invoiceMode ? false : true });
 
   if (start) query = query.gte("entry_date", start);
@@ -53,6 +53,7 @@ export async function GET(req: NextRequest) {
         id: entry.id,
         description: entry.description,
         entry_date: entry.entry_date,
+        start_time: entry.start_time ?? null,
         duration_hours: Number(entry.duration_hours),
         billable: entry.billable,
         billed: entry.billed,
@@ -71,11 +72,30 @@ export async function GET(req: NextRequest) {
     const hours = Number(entry.duration_hours);
     const label = `${client?.name ?? "?"} · ${hours % 1 === 0 ? hours : hours.toFixed(2)}h`;
 
+    const startTime = entry.start_time as string | null;
+    const hasTimed = startTime != null;
+
+    let eventStart: string;
+    let eventEnd: string | undefined;
+
+    if (hasTimed) {
+      // startTime is "HH:MM:SS" — use "HH:MM" for the ISO datetime
+      const hhmm = startTime.substring(0, 5);
+      eventStart = `${entry.entry_date}T${hhmm}`;
+      const startMs = new Date(eventStart).getTime();
+      const endDate = new Date(startMs + hours * 3_600_000);
+      const pad = (n: number) => String(n).padStart(2, "0");
+      eventEnd = `${endDate.getFullYear()}-${pad(endDate.getMonth() + 1)}-${pad(endDate.getDate())}T${pad(endDate.getHours())}:${pad(endDate.getMinutes())}`;
+    } else {
+      eventStart = entry.entry_date;
+    }
+
     return {
       id: entry.id,
       title: `${label} — ${entry.description}`,
-      start: entry.entry_date,
-      allDay: true,
+      start: eventStart,
+      ...(eventEnd ? { end: eventEnd } : {}),
+      allDay: !hasTimed,
       backgroundColor: color,
       borderColor: color,
       textColor: "#ffffff",
@@ -88,6 +108,7 @@ export async function GET(req: NextRequest) {
         durationHours: hours,
         billable: entry.billable,
         billed: entry.billed,
+        startTime: startTime ? startTime.substring(0, 5) : null,
       },
     };
   });

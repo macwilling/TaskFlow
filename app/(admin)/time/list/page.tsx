@@ -37,7 +37,7 @@ export default async function TimeListPage({
 
   let query = supabase
     .from("time_entries")
-    .select("id, description, entry_date, duration_hours, billable, billed, hourly_rate, client_id, task_id, clients(name, color), tasks(title)")
+    .select("id, description, entry_date, start_time, duration_hours, billable, billed, hourly_rate, client_id, task_id, clients(name, color), tasks(title)")
     .order("entry_date", { ascending: false });
 
   if (params.client) query = query.eq("client_id", params.client);

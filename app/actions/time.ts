@@ -25,6 +25,7 @@ interface TimeEntryInput {
   task_id?: string | null;
   description: string;
   entry_date: string;
+  start_time?: string | null;
   duration_hours: number;
   billable: boolean;
   hourly_rate?: number | null;
@@ -60,6 +61,7 @@ export async function createTimeEntryAction(
       task_id: input.task_id || null,
       description: input.description,
       entry_date: input.entry_date,
+      start_time: input.start_time || null,
       duration_hours: input.duration_hours,
       billable: input.billable,
       hourly_rate: input.hourly_rate ?? null,
@@ -99,6 +101,7 @@ export async function updateTimeEntryAction(
       task_id: input.task_id || null,
       description: input.description,
       entry_date: input.entry_date,
+      start_time: input.start_time || null,
       duration_hours: input.duration_hours,
       billable: input.billable,
       hourly_rate: input.hourly_rate ?? null,
@@ -115,11 +118,12 @@ export async function updateTimeEntryAction(
   return {};
 }
 
-// ─── Update date (drag-drop) ──────────────────────────────────────────────────
+// ─── Update date/time (drag-drop) ────────────────────────────────────────────
 
 export async function updateTimeEntryDateAction(
   id: string,
-  entry_date: string
+  entry_date: string,
+  start_time: string | null
 ): Promise<{ error?: string }> {
   const supabase = await createClient();
   const {
@@ -132,7 +136,7 @@ export async function updateTimeEntryDateAction(
 
   const { error } = await supabase
     .from("time_entries")
-    .update({ entry_date })
+    .update({ entry_date, start_time })
     .eq("id", id);
 
   if (error) return { error: error.message };
