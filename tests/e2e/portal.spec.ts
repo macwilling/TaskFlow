@@ -2,6 +2,7 @@
  * E2E tests for client portal flows — issue #38
  *
  * Covers:
+ *  - Unauthenticated visit to portal login page renders login form (no redirect loop)
  *  - Client logs in via magic link → lands on portal dashboard
  *  - Client views task list → sees only their tasks
  *  - Client opens a task → reads description (read-only view)
@@ -17,6 +18,7 @@
  * Tests skip automatically when seed data is absent (no Supabase credentials).
  */
 
+import { test } from "@playwright/test";
 import { test as seedTest, expect, mockResend, CLIENT_STATE } from "./fixtures";
 import { createClient } from "@supabase/supabase-js";
 
@@ -29,6 +31,28 @@ function adminSupa() {
     { auth: { autoRefreshToken: false, persistSession: false } }
   );
 }
+
+// ── Portal login page — no redirect loop (issue #61) ─────────────────────────
+//
+// Regression test: before the (protected) route group was introduced, visiting
+// /portal/[slug]/login while unauthenticated triggered an infinite redirect loop
+// because the layout.tsx auth check would redirect back to the same login URL.
+
+test.describe("portal login page — unauthenticated", () => {
+  test("renders sign-in form without redirecting", async ({ page }) => {
+    // Use a plausible slug; a real tenant is not required — the login page
+    // renders even when the tenant doesn't exist (just shows the slug as the title).
+    await page.goto("/portal/test-tenant/login");
+
+    // Must NOT loop — the final URL should still be the login page.
+    await expect(page).toHaveURL(/\/portal\/test-tenant\/login/, { timeout: 10_000 });
+
+    // The primary CTA from PortalLoginForm must be visible.
+    await expect(
+      page.getByRole("button", { name: /email me a sign-in link/i })
+    ).toBeVisible({ timeout: 10_000 });
+  });
+});
 
 // ── Magic link login (unauthenticated start) ──────────────────────────────────
 

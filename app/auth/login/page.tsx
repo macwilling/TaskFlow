@@ -58,30 +58,12 @@ function LoginForm() {
   const [magicLinkLoading, setMagicLinkLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  async function handlePasswordSignIn(e: React.FormEvent) {
+  const busy = loading || magicLinkLoading || googleLoading;
+
+  async function handleMagicLink(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
-    setLoading(true);
-
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-      return;
-    }
-
-    router.push("/dashboard");
-    router.refresh();
-  }
-
-  async function handleMagicLink() {
-    if (!email) {
-      setError("Enter your email above first.");
-      return;
-    }
     setError(null);
     setMagicLinkLoading(true);
 
@@ -99,6 +81,24 @@ function LoginForm() {
       setMagicLinkSent(true);
     }
     setMagicLinkLoading(false);
+  }
+
+  async function handlePasswordSignIn(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+      return;
+    }
+
+    router.push("/dashboard");
+    router.refresh();
   }
 
   async function handleGoogleSignIn() {
@@ -120,13 +120,11 @@ function LoginForm() {
     // On success the browser redirects — no further action needed here
   }
 
-  const busy = loading || magicLinkLoading || googleLoading;
-
   if (magicLinkSent) {
     return (
       <Alert>
         <AlertDescription>
-          Magic link sent — check your email and click the link to sign in.
+          Check your inbox — we sent a sign-in link to <strong>{email}</strong>.
         </AlertDescription>
       </Alert>
     );
@@ -140,81 +138,113 @@ function LoginForm() {
         </Alert>
       )}
 
-      {/* Google OAuth */}
-      <Button
-        type="button"
-        variant="outline"
-        className="w-full"
-        disabled={busy}
-        onClick={handleGoogleSignIn}
-      >
-        <GoogleIcon />
-        <span className="ml-2">
-          {googleLoading ? "Redirecting…" : "Continue with Google"}
-        </span>
-      </Button>
-
-      {/* Divider */}
-      <div className="relative">
-        <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t border-border" />
-        </div>
-        <div className="relative flex justify-center text-xs">
-          <span className="bg-background px-2 text-muted-foreground">or</span>
-        </div>
-      </div>
-
-      {/* Email / password */}
-      <form onSubmit={handlePasswordSignIn} className="space-y-4">
-        <div className="space-y-1.5">
-          <Label htmlFor="email">Email</Label>
-          <Input
-            id="email"
-            type="email"
-            autoComplete="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="password">Password</Label>
-            <Link
-              href="/auth/reset-password"
-              className="text-xs text-muted-foreground hover:text-foreground"
-            >
-              Forgot password?
-            </Link>
+      {showPassword ? (
+        /* ── Password sign-in ── */
+        <form onSubmit={handlePasswordSignIn} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+            />
           </div>
-          <Input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-          />
-        </div>
 
-        <Button type="submit" className="w-full" disabled={busy}>
-          {loading ? "Signing in…" : "Sign in"}
-        </Button>
-      </form>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">Password</Label>
+              <Link
+                href="/auth/reset-password"
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
+                Forgot password?
+              </Link>
+            </div>
+            <Input
+              id="password"
+              type="password"
+              autoComplete="current-password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+            />
+          </div>
 
-      {/* Magic link */}
-      <Button
-        type="button"
-        variant="ghost"
-        className="w-full text-muted-foreground"
-        disabled={busy}
-        onClick={handleMagicLink}
-      >
-        {magicLinkLoading ? "Sending…" : "Email me a sign-in link"}
-      </Button>
+          <Button type="submit" className="w-full" disabled={busy}>
+            {loading ? "Signing in…" : "Sign in"}
+          </Button>
+
+          <p className="text-center text-sm text-muted-foreground">
+            <button
+              type="button"
+              className="hover:text-foreground underline-offset-4 hover:underline"
+              onClick={() => { setShowPassword(false); setError(null); }}
+            >
+              Use magic link instead
+            </button>
+          </p>
+        </form>
+      ) : (
+        /* ── Magic link (default) ── */
+        <>
+          <form onSubmit={handleMagicLink} className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={busy}>
+              {magicLinkLoading ? "Sending…" : "Email me a sign-in link"}
+            </Button>
+          </form>
+
+          {/* Divider */}
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-xs">
+              <span className="bg-background px-2 text-muted-foreground">or</span>
+            </div>
+          </div>
+
+          {/* Google OAuth */}
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            disabled={busy}
+            onClick={handleGoogleSignIn}
+          >
+            <GoogleIcon />
+            <span className="ml-2">
+              {googleLoading ? "Redirecting…" : "Continue with Google"}
+            </span>
+          </Button>
+
+          <p className="text-center text-sm text-muted-foreground">
+            <button
+              type="button"
+              className="hover:text-foreground underline-offset-4 hover:underline"
+              onClick={() => { setShowPassword(true); setError(null); }}
+            >
+              Sign in with password instead
+            </button>
+          </p>
+        </>
+      )}
     </>
   );
 }
