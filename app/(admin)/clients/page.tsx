@@ -13,7 +13,8 @@ interface SearchParams {
   archived?: string;
 }
 
-async function ClientTable({ q, archived }: { q?: string; archived?: string }) {
+async function ClientTable({ q, archived }: { q?: string; archived?: string; }) {
+  const showStatus = archived === "1";
   const supabase = await createClient();
 
   let query = supabase
@@ -42,9 +43,17 @@ async function ClientTable({ q, archived }: { q?: string; archived?: string }) {
           {q ? "No clients match your search." : archived === "1" ? "No archived clients." : "No clients yet."}
         </p>
         {!q && archived !== "1" && (
-          <p className="mt-1 text-xs text-muted-foreground">
-            Create your first client to get started.
-          </p>
+          <>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Create your first client to get started.
+            </p>
+            <Button asChild size="sm" className="mt-4 h-8 gap-1.5 text-xs">
+              <Link href="/clients/new">
+                <Plus className="h-3.5 w-3.5" />
+                New client
+              </Link>
+            </Button>
+          </>
         )}
       </div>
     );
@@ -59,7 +68,7 @@ async function ClientTable({ q, archived }: { q?: string; archived?: string }) {
             <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Email</th>
             <th className="px-4 py-2.5 text-right text-xs font-medium text-muted-foreground">Rate</th>
             <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Terms</th>
-            <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Status</th>
+            {showStatus && <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Status</th>}
             <th className="w-8" />
           </tr>
         </thead>
@@ -99,15 +108,17 @@ async function ClientTable({ q, archived }: { q?: string; archived?: string }) {
               <td className="px-4 py-3 text-muted-foreground">
                 {client.payment_terms ? `Net ${client.payment_terms}` : "—"}
               </td>
-              <td className="px-4 py-3">
-                {client.is_archived ? (
-                  <Badge variant="secondary" className="text-xs">Archived</Badge>
-                ) : (
-                  <Badge variant="outline" className="text-xs text-emerald-600 border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-400">
-                    Active
-                  </Badge>
-                )}
-              </td>
+              {showStatus && (
+                <td className="px-4 py-3">
+                  {client.is_archived ? (
+                    <Badge variant="secondary" className="text-xs">Archived</Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-xs text-emerald-600 border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-400">
+                      Active
+                    </Badge>
+                  )}
+                </td>
+              )}
               <td className="pr-3">
                 <Link href={`/clients/${client.id}`}>
                   <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
