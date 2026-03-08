@@ -10,11 +10,12 @@ import { TimeEntryModal } from "@/components/time/TimeEntryModal";
 interface Props {
   clientId: string;
   clientName: string;
+  clientKey: string | null;
   clientDefaultRate: number | null;
-  tasks: { id: string; title: string; client_id: string }[];
+  tasks: { id: string; title: string; client_id: string; task_number: number | null; status: string }[];
 }
 
-export function ClientQuickActions({ clientId, clientName, clientDefaultRate, tasks }: Props) {
+export function ClientQuickActions({ clientId, clientName, clientKey, clientDefaultRate, tasks }: Props) {
   const router = useRouter();
   const [timeModalOpen, setTimeModalOpen] = useState(false);
 
@@ -48,7 +49,7 @@ export function ClientQuickActions({ clientId, clientName, clientDefaultRate, ta
         open={timeModalOpen}
         onOpenChange={setTimeModalOpen}
         onSuccess={() => router.refresh()}
-        clients={[{ id: clientId, name: clientName, color: null, default_rate: clientDefaultRate }]}
+        clients={[{ id: clientId, name: clientName, color: null, default_rate: clientDefaultRate, client_key: clientKey }]}
         tasks={tasks}
         prefillClientId={clientId}
       />

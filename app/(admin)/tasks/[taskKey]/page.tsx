@@ -67,12 +67,12 @@ async function TimeEntriesPanel({
         .order("entry_date", { ascending: false }),
       supabase
         .from("clients")
-        .select("id, name, color, default_rate")
+        .select("id, name, color, default_rate, client_key")
         .eq("is_archived", false)
         .order("name"),
       supabase
         .from("tasks")
-        .select("id, title, client_id")
+        .select("id, title, client_id, task_number, status")
         .not("status", "eq", "closed")
         .order("title"),
     ]);

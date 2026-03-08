@@ -124,6 +124,8 @@ export default async function ClientDetailPage({
     id: t.id,
     title: t.title,
     client_id: clientId,
+    task_number: t.task_number,
+    status: t.status,
   }));
 
   return (
@@ -223,6 +225,7 @@ export default async function ClientDetailPage({
             <ClientQuickActions
               clientId={client.id}
               clientName={client.name}
+              clientKey={clientKey}
               clientDefaultRate={client.default_rate != null ? Number(client.default_rate) : null}
               tasks={taskListForModal}
             />
