@@ -15,9 +15,7 @@ interface Props {
   tasks: { id: string; title: string; client_id: string; task_number: number | null; status: string }[];
 }
 
-type ClientModalProps = Props;
-
-export function LogTimeButton({ clientId, clientName, clientKey, clientDefaultRate, tasks }: ClientModalProps) {
+export function LogTimeButton({ clientId, clientName, clientKey, clientDefaultRate, tasks }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
 

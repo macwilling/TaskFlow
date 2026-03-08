@@ -48,9 +48,20 @@ interface ClientFormProps {
 function SubmitButton({ label }: { label: string }) {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" disabled={pending}>
+    <Button type="submit" size="sm" disabled={pending}>
       {pending ? "Saving…" : label}
     </Button>
+  );
+}
+
+function SectionHeader({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {children}
+      </h2>
+      <Separator className="mb-4" />
+    </>
   );
 }
 
@@ -80,7 +91,7 @@ export function ClientForm({ action, client, cancelHref }: ClientFormProps) {
 
       {/* Basic info */}
       <div className="space-y-4">
-        <h2 className="text-sm font-medium text-foreground">Basic information</h2>
+        <SectionHeader>Basic information</SectionHeader>
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
@@ -151,11 +162,9 @@ export function ClientForm({ action, client, cancelHref }: ClientFormProps) {
         </div>
       </div>
 
-      <Separator />
-
       {/* Billing */}
       <div className="space-y-4">
-        <h2 className="text-sm font-medium text-foreground">Billing</h2>
+        <SectionHeader>Billing</SectionHeader>
 
         <div className="grid grid-cols-3 gap-4">
           <div className="space-y-1.5">
@@ -207,11 +216,9 @@ export function ClientForm({ action, client, cancelHref }: ClientFormProps) {
         </div>
       </div>
 
-      <Separator />
-
       {/* Billing address */}
       <div className="space-y-4">
-        <h2 className="text-sm font-medium text-foreground">Billing address</h2>
+        <SectionHeader>Billing address</SectionHeader>
 
         <div className="space-y-1.5">
           <Label htmlFor="billing_line1">Address line 1</Label>
@@ -273,11 +280,9 @@ export function ClientForm({ action, client, cancelHref }: ClientFormProps) {
         </div>
       </div>
 
-      <Separator />
-
       {/* Notes + color */}
       <div className="space-y-4">
-        <h2 className="text-sm font-medium text-foreground">Other</h2>
+        <SectionHeader>Other</SectionHeader>
 
         <div className="space-y-1.5">
           <Label htmlFor="notes">Notes</Label>
@@ -308,9 +313,9 @@ export function ClientForm({ action, client, cancelHref }: ClientFormProps) {
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-3 border-t border-border pt-6">
+      <div className="flex items-center gap-2 border-t border-border pt-5">
         <SubmitButton label={client?.id ? "Save changes" : "Create client"} />
-        <Button type="button" variant="ghost" asChild>
+        <Button type="button" size="sm" variant="ghost" className="text-muted-foreground" asChild>
           <Link href={cancelHref}>Cancel</Link>
         </Button>
       </div>

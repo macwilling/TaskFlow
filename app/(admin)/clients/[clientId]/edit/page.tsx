@@ -27,8 +27,8 @@ export default async function EditClientPage({
   return (
     <>
       <TopBar
-        title={`Edit — ${client.name}`}
-        description="Update client information."
+        title={client.name}
+        description={client.company ?? "Edit client"}
       />
       <PageContainer>
         <ClientForm
