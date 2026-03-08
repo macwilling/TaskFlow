@@ -58,12 +58,15 @@ interface Client {
   name: string;
   color: string | null;
   default_rate: number | null;
+  client_key: string | null;
 }
 
 interface Task {
   id: string;
   title: string;
   client_id: string;
+  task_number: number | null;
+  status: string;
 }
 
 export function TimeCalendarWrapper({ clients, tasks }: { clients: Client[]; tasks: Task[] }) {

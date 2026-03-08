@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createTimeEntryAction, updateTimeEntryAction, deleteTimeEntryAction } from "@/app/actions/time";
+import { TaskStatusBadge } from "@/components/tasks/TaskStatusBadge";
 
 export interface TimeEntryData {
   id: string;
@@ -37,12 +38,15 @@ interface Client {
   name: string;
   color: string | null;
   default_rate: number | null;
+  client_key: string | null;
 }
 
 interface Task {
   id: string;
   title: string;
   client_id: string;
+  task_number: number | null;
+  status: string;
 }
 
 interface TimeEntryModalProps {
@@ -91,9 +95,6 @@ export function TimeEntryModal({
     entry?.durationHours != null ? String(entry.durationHours) : "1"
   );
   const [billable, setBillable] = useState(entry?.billable ?? true);
-  const [hourlyRate, setHourlyRate] = useState(
-    entry?.hourlyRate != null ? String(entry.hourlyRate) : ""
-  );
 
   // Reset form when modal opens
   useEffect(() => {
@@ -107,7 +108,6 @@ export function TimeEntryModal({
         setStartTime(entry.startTime ?? "");
         setDurationHours(String(entry.durationHours));
         setBillable(entry.billable);
-        setHourlyRate(entry.hourlyRate != null ? String(entry.hourlyRate) : "");
       } else {
         setClientId(prefillClientId ?? "");
         setTaskId(prefillTaskId ?? "");
@@ -116,22 +116,10 @@ export function TimeEntryModal({
         setStartTime(prefillTime ?? "");
         setDurationHours(prefillDuration != null ? String(prefillDuration) : "1");
         setBillable(true);
-        setHourlyRate("");
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
-
-  // Auto-fill hourly rate from client default when client changes
-  useEffect(() => {
-    if (!isEditing && !entry && clientId) {
-      const client = clients.find((c) => c.id === clientId);
-      if (client?.default_rate != null) {
-        setHourlyRate(String(client.default_rate));
-      }
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clientId]);
 
   // When client changes, clear task selection if it belongs to a different client
   useEffect(() => {
@@ -162,6 +150,9 @@ export function TimeEntryModal({
   })();
 
   function buildInput() {
+    const snapshotRate = isEditing
+      ? entry!.hourlyRate
+      : (clients.find((c) => c.id === clientId)?.default_rate ?? null);
     return {
       client_id: clientId,
       task_id: taskId || null,
@@ -170,7 +161,7 @@ export function TimeEntryModal({
       start_time: startTime || null,
       duration_hours: parseFloat(durationHours) || 0,
       billable,
-      hourly_rate: hourlyRate ? parseFloat(hourlyRate) : null,
+      hourly_rate: snapshotRate,
     };
   }
 
@@ -253,11 +244,21 @@ export function TimeEntryModal({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="_none">No task</SelectItem>
-                  {clientTasks.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.title}
-                    </SelectItem>
-                  ))}
+                  {clientTasks.map((t) => {
+                    const clientKey = clients.find((c) => c.id === t.client_id)?.client_key;
+                    const issueKey = clientKey && t.task_number ? `${clientKey}-${t.task_number}` : null;
+                    return (
+                      <SelectItem key={t.id} value={t.id}>
+                        <span className="flex items-center gap-2 min-w-0">
+                          {issueKey && (
+                            <span className="text-muted-foreground font-mono text-xs shrink-0">{issueKey}</span>
+                          )}
+                          <span className="truncate">{t.title}</span>
+                          <TaskStatusBadge status={t.status} />
+                        </span>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
@@ -275,7 +276,7 @@ export function TimeEntryModal({
           </div>
 
           {/* Date · Start · Hours */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-[2fr_2fr_1fr] gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="te-date">Date</Label>
               <Input
@@ -283,6 +284,7 @@ export function TimeEntryModal({
                 type="date"
                 value={entryDate}
                 onChange={(e) => setEntryDate(e.target.value)}
+                className="[&::-webkit-calendar-picker-indicator]:hidden"
               />
             </div>
             <div className="space-y-1.5">
@@ -294,6 +296,7 @@ export function TimeEntryModal({
                 type="time"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
+                className="[&::-webkit-calendar-picker-indicator]:hidden"
               />
             </div>
             <div className="space-y-1.5">
@@ -316,20 +319,6 @@ export function TimeEntryModal({
               Ends at {endTimeDisplay}
             </p>
           )}
-
-          {/* Hourly rate */}
-          <div className="space-y-1.5">
-            <Label htmlFor="te-rate">Hourly rate <span className="text-muted-foreground font-normal">(optional)</span></Label>
-            <Input
-              id="te-rate"
-              type="number"
-              step="0.01"
-              min="0"
-              value={hourlyRate}
-              onChange={(e) => setHourlyRate(e.target.value)}
-              placeholder="0.00"
-            />
-          </div>
 
           {/* Billable toggle */}
           <div className="flex items-center gap-2">
