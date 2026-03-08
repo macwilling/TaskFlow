@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { TopBar } from "@/components/layout/TopBar";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { ArchiveClientButton } from "@/components/clients/ArchiveClientButton";
-import { ClientQuickActions } from "@/components/clients/ClientQuickActions";
+import { ClientQuickActions, LogTimeButton } from "@/components/clients/ClientQuickActions";
 import { PortalAccessSection } from "@/components/portal/PortalAccessSection";
 import { TaskStatusBadge, TaskPriorityBadge } from "@/components/tasks/TaskStatusBadge";
 import { InvoiceStatusBadge } from "@/components/invoices/InvoiceStatusBadge";
@@ -21,6 +21,17 @@ function InfoRow({ label, value }: { label: string; value?: string | null }) {
       <dt className="w-36 shrink-0 text-muted-foreground">{label}</dt>
       <dd className="text-foreground">{value}</dd>
     </div>
+  );
+}
+
+function SectionHeader({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {children}
+      </h2>
+      <Separator className="mb-4" />
+    </>
   );
 }
 
@@ -151,7 +162,7 @@ export default async function ClientDetailPage({
 
       <PageContainer>
         <div className="space-y-8 max-w-4xl">
-          {/* Status */}
+          {/* Archived status banner */}
           {client.is_archived && (
             <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
               <Badge variant="secondary">Archived</Badge>
@@ -162,10 +173,7 @@ export default async function ClientDetailPage({
           {/* Contact + billing side by side */}
           <div className="grid grid-cols-2 gap-8">
             <div>
-              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Contact
-              </h2>
-              <Separator className="mb-3" />
+              <SectionHeader>Contact</SectionHeader>
               <dl>
                 <InfoRow label="Email" value={client.email} />
                 <InfoRow label="Phone" value={client.phone} />
@@ -174,10 +182,7 @@ export default async function ClientDetailPage({
             </div>
 
             <div>
-              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Billing
-              </h2>
-              <Separator className="mb-3" />
+              <SectionHeader>Billing</SectionHeader>
               <dl>
                 <InfoRow
                   label="Hourly rate"
@@ -204,48 +209,39 @@ export default async function ClientDetailPage({
 
           {/* Notes */}
           {client.notes && (
-            <>
-              <Separator />
-              <div>
-                <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Notes
-                </h2>
-                <p className="text-sm text-foreground whitespace-pre-line">{client.notes}</p>
-              </div>
-            </>
+            <div>
+              <SectionHeader>Notes</SectionHeader>
+              <p className="text-sm text-foreground whitespace-pre-line">{client.notes}</p>
+            </div>
           )}
 
-          <Separator />
-
-          {/* Quick actions */}
-          <div>
-            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Quick actions
-            </h2>
-            <ClientQuickActions
-              clientId={client.id}
-              clientName={client.name}
-              clientKey={clientKey}
-              clientDefaultRate={client.default_rate != null ? Number(client.default_rate) : null}
-              tasks={taskListForModal}
-            />
-          </div>
-
-          <Separator />
+          {/* Quick actions — inline action bar, no section label */}
+          <ClientQuickActions
+            clientId={client.id}
+            clientName={client.name}
+            clientKey={clientKey}
+            clientDefaultRate={client.default_rate != null ? Number(client.default_rate) : null}
+            tasks={taskListForModal}
+          />
 
           {/* Active tasks */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Active tasks
               </h2>
               <Button asChild variant="ghost" size="sm" className="h-6 text-xs text-muted-foreground">
                 <Link href={`/tasks?clientId=${client.id}`}>View all</Link>
               </Button>
             </div>
-            <Separator className="mb-3" />
+            <Separator className="mb-4" />
             {(tasks ?? []).length === 0 ? (
-              <p className="text-sm text-muted-foreground">No active tasks.</p>
+              <p className="text-sm text-muted-foreground">
+                No active tasks.{" "}
+                <Link href={`/tasks/new?clientId=${client.id}`} className="text-foreground underline-offset-4 hover:underline">
+                  Create one →
+                </Link>
+              </p>
             ) : (
               <div className="divide-y divide-border rounded-md border border-border">
                 {(tasks ?? []).map((task) => {
@@ -271,31 +267,40 @@ export default async function ClientDetailPage({
             )}
           </div>
 
-          <Separator />
-
           {/* Time summary */}
           <div>
-            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Time summary
-            </h2>
-            <Separator className="mb-3" />
-            <div className="grid grid-cols-4 gap-4">
-              <StatCard label="Total hours" value={totalHours.toFixed(1)} />
-              <StatCard label="Billable hours" value={billableHours.toFixed(1)} />
-              <StatCard label="Unbilled hours" value={unbilledHours.toFixed(1)} />
-              <StatCard
-                label="Unbilled value"
-                value={formatCurrency(unbilledValue, client.currency)}
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Time summary
+              </h2>
+              <LogTimeButton
+                clientId={client.id}
+                clientName={client.name}
+                clientKey={clientKey}
+                clientDefaultRate={client.default_rate != null ? Number(client.default_rate) : null}
+                tasks={taskListForModal}
               />
             </div>
+            <Separator className="mb-4" />
+            <div className="flex divide-x divide-border rounded-md border border-border">
+              {[
+                { label: "Total hours", value: totalHours.toFixed(1) },
+                { label: "Billable hours", value: billableHours.toFixed(1) },
+                { label: "Unbilled hours", value: unbilledHours.toFixed(1) },
+                { label: "Unbilled value", value: formatCurrency(unbilledValue, client.currency) },
+              ].map(({ label, value }) => (
+                <div key={label} className="flex-1 px-4 py-3">
+                  <p className="text-xs text-muted-foreground mb-1">{label}</p>
+                  <p className="text-lg font-semibold tabular-nums text-foreground">{value}</p>
+                </div>
+              ))}
+            </div>
           </div>
-
-          <Separator />
 
           {/* Invoice history */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Invoice history
               </h2>
               {outstandingBalance > 0 && (
@@ -307,13 +312,20 @@ export default async function ClientDetailPage({
                 </span>
               )}
             </div>
-            <Separator className="mb-3" />
+            <Separator className="mb-4" />
             {invoiceList.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No invoices yet.</p>
+              <p className="text-sm text-muted-foreground">
+                No invoices yet.{" "}
+                <Link href={`/invoices/new?clientId=${client.id}`} className="text-foreground underline-offset-4 hover:underline">
+                  Create an invoice →
+                </Link>
+              </p>
             ) : (
               <div className="divide-y divide-border rounded-md border border-border">
                 {invoiceList.map((inv) => {
                   const status = effectiveInvoiceStatus(inv.status, inv.due_date);
+                  const remaining = Number(inv.total ?? 0) - Number(inv.amount_paid ?? 0);
+                  const isPartiallyPaid = Number(inv.amount_paid ?? 0) > 0 && inv.status !== "paid";
                   return (
                     <Link
                       key={inv.id}
@@ -323,8 +335,15 @@ export default async function ClientDetailPage({
                       <span className="font-medium text-foreground w-24 shrink-0">{inv.invoice_number}</span>
                       <span className="text-muted-foreground flex-1">{formatDate(inv.issue_date)}</span>
                       <InvoiceStatusBadge status={status} />
-                      <span className="text-right font-medium text-foreground w-24 shrink-0">
-                        {formatCurrency(Number(inv.total ?? 0), client.currency)}
+                      <span className="text-right w-24 shrink-0">
+                        <span className="font-medium text-foreground block">
+                          {formatCurrency(Number(inv.total ?? 0), client.currency)}
+                        </span>
+                        {isPartiallyPaid && (
+                          <span className="text-xs text-muted-foreground">
+                            Remaining: {formatCurrency(remaining, client.currency)}
+                          </span>
+                        )}
                       </span>
                     </Link>
                   );
@@ -332,8 +351,6 @@ export default async function ClientDetailPage({
               </div>
             )}
           </div>
-
-          <Separator />
 
           {/* Client portal access */}
           <PortalAccessSection
@@ -348,14 +365,5 @@ export default async function ClientDetailPage({
         </div>
       </PageContainer>
     </>
-  );
-}
-
-function StatCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-md border border-border p-4">
-      <p className="text-xs text-muted-foreground mb-1">{label}</p>
-      <p className="text-lg font-semibold text-foreground">{value}</p>
-    </div>
   );
 }
