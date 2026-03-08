@@ -171,6 +171,30 @@ export async function updateClientAction(
   redirect(`/clients/${clientId}`);
 }
 
+export async function updateClientNotesAction(
+  clientId: string,
+  notes: string
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user || user.app_metadata?.role !== "admin") {
+    return { error: "Unauthorized." };
+  }
+
+  const { error } = await supabase
+    .from("clients")
+    .update({ notes: notes.trim() || null })
+    .eq("id", clientId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/clients/${clientId}`);
+  return {};
+}
+
 export async function archiveClientAction(clientId: string, archive: boolean) {
   const supabase = await createClient();
   const {

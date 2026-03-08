@@ -5,7 +5,8 @@ import {
   revokePortalAccessAction,
 } from "@/app/actions/portal";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Clock, Eye } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { CheckCircle2, Clock, Lock, Eye } from "lucide-react";
 
 function formatDate(d: string | null) {
   if (!d) return null;
@@ -35,7 +36,6 @@ export function PortalAccessSection({
 }) {
   const boundSendLink = sendPortalSignInLinkAction.bind(null, clientId);
   const [linkState, sendLinkAction] = useActionState(boundSendLink, null);
-
   const [isPending, startTransition] = useTransition();
   const [confirmRevoke, setConfirmRevoke] = useState(false);
 
@@ -51,80 +51,74 @@ export function PortalAccessSection({
 
   return (
     <div>
-      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        Client Portal Access
+      <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        Client Portal
       </h2>
+      <Separator className="mb-4" />
 
-      {/* ── Active: client has signed in at least once ── */}
       {hasAccess && acceptedAt ? (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400">
-            <CheckCircle2 className="h-4 w-4 shrink-0" />
-            <span>Portal access active</span>
+        /* ── Active ── */
+        <div className="rounded-md border border-border">
+          <div className="flex items-center gap-3 px-4 py-3">
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground">Portal access active</p>
+              <p className="text-xs text-muted-foreground">
+                {portalEmail ?? clientEmail ?? "—"}
+                {lastSeenAt ? ` · Last seen ${formatDate(lastSeenAt)}` : " · Never signed in"}
+              </p>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 text-xs gap-1.5"
+                onClick={handleImpersonate}
+                disabled={isPending}
+              >
+                <Eye className="h-3.5 w-3.5" />
+                Preview
+              </Button>
+              {linkState?.success ? (
+                <span className="text-xs text-emerald-600 dark:text-emerald-400 px-2">
+                  Link sent
+                </span>
+              ) : (
+                <form action={sendLinkAction}>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs"
+                    disabled={isPending}
+                  >
+                    Resend link
+                  </Button>
+                </form>
+              )}
+            </div>
           </div>
-
-          <dl className="space-y-1">
-            {portalEmail && (
-              <div className="flex gap-4">
-                <dt className="w-28 shrink-0 text-muted-foreground text-xs">Login email</dt>
-                <dd className="text-foreground text-xs">{portalEmail}</dd>
+          <Separator />
+          <div className="flex items-center gap-3 px-4 py-2">
+            <dl className="flex gap-6 text-xs flex-1">
+              {invitedAt && (
+                <div className="flex gap-1.5">
+                  <dt className="text-muted-foreground">Invited</dt>
+                  <dd className="text-foreground">{formatDate(invitedAt)}</dd>
+                </div>
+              )}
+              <div className="flex gap-1.5">
+                <dt className="text-muted-foreground">First login</dt>
+                <dd className="text-foreground">{formatDate(acceptedAt)}</dd>
               </div>
-            )}
-            {invitedAt && (
-              <div className="flex gap-4">
-                <dt className="w-28 shrink-0 text-muted-foreground text-xs">Invited</dt>
-                <dd className="text-foreground text-xs">{formatDate(invitedAt)}</dd>
-              </div>
-            )}
-            <div className="flex gap-4">
-              <dt className="w-28 shrink-0 text-muted-foreground text-xs">First login</dt>
-              <dd className="text-foreground text-xs">{formatDate(acceptedAt)}</dd>
-            </div>
-            <div className="flex gap-4">
-              <dt className="w-28 shrink-0 text-muted-foreground text-xs">Last seen</dt>
-              <dd className="text-foreground text-xs">
-                {lastSeenAt ? formatDate(lastSeenAt) : "Never"}
-              </dd>
-            </div>
-          </dl>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 text-xs gap-1.5"
-              onClick={handleImpersonate}
-              disabled={isPending}
-            >
-              <Eye className="h-3.5 w-3.5" />
-              Impersonate
-            </Button>
-
-            {linkState?.success ? (
-              <span className="text-xs text-emerald-600 dark:text-emerald-400">
-                Access link sent.
-              </span>
-            ) : (
-              <form action={sendLinkAction}>
-                <Button
-                  type="submit"
-                  size="sm"
-                  variant="outline"
-                  className="h-7 text-xs"
-                  disabled={isPending}
-                >
-                  Resend access link
-                </Button>
-              </form>
-            )}
-
+            </dl>
             {confirmRevoke ? (
               <div className="flex items-center gap-1.5">
                 <span className="text-xs text-muted-foreground">Revoke access?</span>
                 <Button
                   size="sm"
                   variant="destructive"
-                  className="h-7 text-xs"
+                  className="h-6 text-xs"
                   disabled={isPending}
                   onClick={handleRevoke}
                 >
@@ -133,7 +127,7 @@ export function PortalAccessSection({
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-7 text-xs"
+                  className="h-6 text-xs"
                   disabled={isPending}
                   onClick={() => setConfirmRevoke(false)}
                 >
@@ -144,37 +138,94 @@ export function PortalAccessSection({
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-7 text-xs text-destructive hover:text-destructive"
+                className="h-6 text-xs text-destructive hover:text-destructive"
                 onClick={() => setConfirmRevoke(true)}
               >
-                Revoke access
+                Revoke
               </Button>
             )}
           </div>
-
-          {linkState?.error && (
-            <p className="text-xs text-destructive">{linkState.error}</p>
-          )}
         </div>
       ) : hasAccess && !acceptedAt ? (
-        /* ── Pending: invite sent, client hasn't logged in yet ── */
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400">
-            <Clock className="h-4 w-4 shrink-0" />
-            <span>Awaiting first login</span>
+        /* ── Pending ── */
+        <div className="rounded-md border border-border">
+          <div className="flex items-center gap-3 px-4 py-3">
+            <Clock className="h-4 w-4 shrink-0 text-amber-500" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground">Awaiting first login</p>
+              <p className="text-xs text-muted-foreground">
+                {invitedAt ? `Invite sent ${formatDate(invitedAt)}` : "Invite sent"} · Client hasn&apos;t signed in yet
+              </p>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {linkState?.success ? (
+                <span className="text-xs text-emerald-600 dark:text-emerald-400 px-2">
+                  Link sent
+                </span>
+              ) : (
+                <form action={sendLinkAction}>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs"
+                    disabled={isPending}
+                  >
+                    Resend link
+                  </Button>
+                </form>
+              )}
+              {confirmRevoke ? (
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    className="h-7 text-xs"
+                    disabled={isPending}
+                    onClick={handleRevoke}
+                  >
+                    {isPending ? "Revoking…" : "Revoke"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 text-xs"
+                    disabled={isPending}
+                    onClick={() => setConfirmRevoke(false)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-xs text-destructive hover:text-destructive"
+                  onClick={() => setConfirmRevoke(true)}
+                >
+                  Revoke
+                </Button>
+              )}
+            </div>
           </div>
-
-          {invitedAt && (
-            <p className="text-xs text-muted-foreground">
-              Invite sent {formatDate(invitedAt)} — client has not logged in yet.
-            </p>
-          )}
-
-          <div className="flex items-center gap-2 flex-wrap">
+        </div>
+      ) : (
+        /* ── Not invited ── */
+        <div className="rounded-md border border-border">
+          <div className="flex items-center gap-3 px-4 py-3">
+            <Lock className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground">No portal access</p>
+              <p className="text-xs text-muted-foreground">
+                {clientEmail
+                  ? `Send ${clientEmail} a sign-in link to grant access.`
+                  : "Add a client email address to grant portal access."}
+              </p>
+            </div>
             {linkState?.success ? (
-              <span className="text-xs text-emerald-600 dark:text-emerald-400">
-                Access link sent.
-              </span>
+              <p className="text-xs text-emerald-600 dark:text-emerald-400 px-2">
+                Invite sent
+              </p>
             ) : (
               <form action={sendLinkAction}>
                 <Button
@@ -182,81 +233,18 @@ export function PortalAccessSection({
                   size="sm"
                   variant="outline"
                   className="h-7 text-xs"
-                  disabled={isPending}
+                  disabled={isPending || !clientEmail}
                 >
-                  Resend access link
+                  Grant access
                 </Button>
               </form>
             )}
-
-            {confirmRevoke ? (
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs text-muted-foreground">Revoke access?</span>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  className="h-7 text-xs"
-                  disabled={isPending}
-                  onClick={handleRevoke}
-                >
-                  {isPending ? "Revoking…" : "Yes, revoke"}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 text-xs"
-                  disabled={isPending}
-                  onClick={() => setConfirmRevoke(false)}
-                >
-                  Cancel
-                </Button>
-              </div>
-            ) : (
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-7 text-xs text-destructive hover:text-destructive"
-                onClick={() => setConfirmRevoke(true)}
-              >
-                Revoke access
-              </Button>
-            )}
           </div>
-
-          {linkState?.error && (
-            <p className="text-xs text-destructive">{linkState.error}</p>
-          )}
         </div>
-      ) : (
-        /* ── Not invited: no portal access row ── */
-        <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            {clientEmail
-              ? `Grant ${clientEmail} access to the client portal.`
-              : "Grant this client access to the client portal."}
-          </p>
+      )}
 
-          {linkState?.success ? (
-            <p className="text-sm text-emerald-600 dark:text-emerald-400">
-              Access link sent — invite is pending client login.
-            </p>
-          ) : (
-            <form action={sendLinkAction}>
-              <Button
-                type="submit"
-                size="sm"
-                className="h-7 text-xs"
-                disabled={isPending || !clientEmail}
-              >
-                Grant portal access
-              </Button>
-            </form>
-          )}
-
-          {linkState?.error && (
-            <p className="mt-1.5 text-xs text-destructive">{linkState.error}</p>
-          )}
-        </div>
+      {linkState?.error && (
+        <p className="mt-2 text-xs text-destructive">{linkState.error}</p>
       )}
     </div>
   );
