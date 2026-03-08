@@ -54,6 +54,7 @@ interface TimeEntryModalProps {
   // Pre-fill values
   prefillDate?: string;
   prefillTime?: string;
+  prefillDuration?: number;
   prefillClientId?: string;
   prefillTaskId?: string;
   // Edit mode
@@ -72,6 +73,7 @@ export function TimeEntryModal({
   tasks,
   prefillDate,
   prefillTime,
+  prefillDuration,
   prefillClientId,
   prefillTaskId,
   entry,
@@ -112,7 +114,7 @@ export function TimeEntryModal({
         setDescription("");
         setEntryDate(prefillDate ?? todayISO());
         setStartTime(prefillTime ?? "");
-        setDurationHours("1");
+        setDurationHours(prefillDuration != null ? String(prefillDuration) : "1");
         setBillable(true);
         setHourlyRate("");
       }

@@ -7,7 +7,7 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import listPlugin from "@fullcalendar/list";
 import interactionPlugin from "@fullcalendar/interaction";
 import type { DateClickArg } from "@fullcalendar/interaction";
-import type { EventApi, EventClickArg, EventSourceFuncArg, EventDropArg } from "@fullcalendar/core";
+import type { EventApi, EventClickArg, EventSourceFuncArg, EventDropArg, DateSelectArg } from "@fullcalendar/core";
 import { updateTimeEntryDateAction } from "@/app/actions/time";
 import { TimeEntryModal, TimeEntryData } from "@/components/time/TimeEntryModal";
 import { Button } from "@/components/ui/button";
@@ -54,6 +54,7 @@ export function TimeCalendar({ clients, tasks }: TimeCalendarProps) {
   const [modalOpen, setModalOpen] = useState(false);
   const [prefillDate, setPrefillDate] = useState<string | undefined>();
   const [prefillTime, setPrefillTime] = useState<string | undefined>();
+  const [prefillDuration, setPrefillDuration] = useState<number | undefined>();
   const [editEntry, setEditEntry] = useState<TimeEntryData | undefined>();
   const [dayHours, setDayHours] = useState<Record<string, number>>({});
 
@@ -88,11 +89,22 @@ export function TimeCalendar({ clients, tasks }: TimeCalendarProps) {
     setDayHours(totals);
   }
 
-  function openCreate(date?: string, time?: string) {
+  function openCreate(date?: string, time?: string, duration?: number) {
     setEditEntry(undefined);
     setPrefillDate(date ?? localDateStr(new Date()));
     setPrefillTime(time ?? "");
+    setPrefillDuration(duration);
     setModalOpen(true);
+  }
+
+  function handleSelect(arg: DateSelectArg) {
+    const durationMs = arg.end.getTime() - arg.start.getTime();
+    const durationHours = Math.round((durationMs / 3600000) * 4) / 4;
+    if (arg.allDay) {
+      openCreate(localDateStr(arg.start), undefined, durationHours);
+    } else {
+      openCreate(localDateStr(arg.start), localTimeStr(arg.start), durationHours);
+    }
   }
 
   function handleDateClick(arg: DateClickArg) {
@@ -164,6 +176,9 @@ export function TimeCalendar({ clients, tasks }: TimeCalendarProps) {
         events={fetchEvents}
         eventsSet={handleEventsSet}
         editable={true}
+        selectable={true}
+        selectMirror={true}
+        select={handleSelect}
         eventDrop={handleEventDrop}
         dateClick={handleDateClick}
         eventClick={handleEventClick}
@@ -203,6 +218,7 @@ export function TimeCalendar({ clients, tasks }: TimeCalendarProps) {
         tasks={tasks}
         prefillDate={prefillDate}
         prefillTime={prefillTime}
+        prefillDuration={prefillDuration}
         entry={editEntry}
       />
     </>
