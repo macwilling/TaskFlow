@@ -1,5 +1,6 @@
 "use client";
 
+import { useTransition } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useCallback } from "react";
 import {
@@ -26,6 +27,7 @@ export function TimeFilters({ clients }: TimeFiltersProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
 
   const clientId = searchParams.get("client") ?? "";
   const startDate = searchParams.get("start") ?? "";
@@ -41,7 +43,9 @@ export function TimeFilters({ clients }: TimeFiltersProps) {
       } else {
         params.delete(key);
       }
-      router.replace(`${pathname}?${params.toString()}`);
+      startTransition(() => {
+        router.replace(`${pathname}?${params.toString()}`);
+      });
     },
     [router, pathname, searchParams]
   );
@@ -49,11 +53,13 @@ export function TimeFilters({ clients }: TimeFiltersProps) {
   const hasFilters = clientId || startDate || endDate || billable !== "all" || billed !== "all";
 
   function clearAll() {
-    router.replace(pathname);
+    startTransition(() => {
+      router.replace(pathname);
+    });
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2 mb-4">
+    <div className={`flex flex-wrap items-center gap-2 mb-4 transition-opacity ${isPending ? "opacity-60" : ""}`}>
       <Select value={clientId || "all"} onValueChange={(v) => updateParam("client", v === "all" ? "" : v)}>
         <SelectTrigger className="h-7 text-xs w-40">
           <SelectValue placeholder="All clients" />

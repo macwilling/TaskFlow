@@ -4,47 +4,23 @@ import { createClient } from "@/lib/supabase/server";
 import { TopBar } from "@/components/layout/TopBar";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Button } from "@/components/ui/button";
-import { InvoiceListView } from "@/components/invoices/InvoiceListView";
-import { InvoiceFilters } from "@/components/invoices/InvoiceFilters";
+import { InvoicesView } from "@/components/invoices/InvoicesView";
 import { Plus } from "lucide-react";
 
-interface SearchParams {
-  status?: string;
-  client?: string;
-}
-
-function effectiveStatus(status: string, dueDate: string | null): string {
-  if (status === "paid") return "paid";
-  if (dueDate && new Date(dueDate) < new Date() && status !== "draft") return "overdue";
-  return status;
-}
-
-export default async function InvoicesPage({
-  searchParams,
-}: {
-  searchParams: Promise<SearchParams>;
-}) {
-  const { status, client } = await searchParams;
+export default async function InvoicesPage() {
   const supabase = await createClient();
 
-  let query = supabase
-    .from("invoices")
-    .select("id, invoice_number, status, issue_date, due_date, total, clients(name, color)")
-    .order("created_at", { ascending: false });
-
-  if (client) query = query.eq("client_id", client);
-
-  const { data: invoices, error } = await query;
-
-  // Apply effective status filter client-side (overdue is computed, not stored)
-  const filtered = (invoices ?? []).filter((inv) => {
-    if (!status) return true;
-    const es = effectiveStatus(inv.status, inv.due_date);
-    return es === status;
-  });
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const typedInvoices = filtered as any[];
+  const [{ data: invoices, error }, { data: clients }] = await Promise.all([
+    supabase
+      .from("invoices")
+      .select("id, invoice_number, status, issue_date, due_date, total, client_id, clients(name, color)")
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("clients")
+      .select("id, name")
+      .eq("is_archived", false)
+      .order("name"),
+  ]);
 
   return (
     <>
@@ -60,17 +36,17 @@ export default async function InvoicesPage({
         }
       />
       <PageContainer>
-        <div className="space-y-4">
+        {error ? (
+          <p className="text-sm text-destructive">Failed to load invoices: {error.message}</p>
+        ) : (
           <Suspense fallback={null}>
-            <InvoiceFilters />
+            <InvoicesView
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              invoices={(invoices ?? []) as any}
+              clients={clients ?? []}
+            />
           </Suspense>
-
-          {error ? (
-            <p className="text-sm text-destructive">Failed to load invoices: {error.message}</p>
-          ) : (
-            <InvoiceListView invoices={typedInvoices} />
-          )}
-        </div>
+        )}
       </PageContainer>
     </>
   );

@@ -1,7 +1,6 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useRef } from "react";
+import { useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 
@@ -13,30 +12,20 @@ const STATUSES = [
   { value: "closed", label: "Closed" },
 ];
 
-export function TaskFilters() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const q = searchParams.get("q") ?? "";
-  const status = searchParams.get("status") ?? "";
+interface TaskFiltersProps {
+  q: string;
+  status: string;
+  onQChange: (q: string) => void;
+  onStatusChange: (status: string) => void;
+}
 
-  const updateParam = useCallback(
-    (key: string, value: string) => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (value) {
-        params.set(key, value);
-      } else {
-        params.delete(key);
-      }
-      router.replace(`/tasks?${params.toString()}`);
-    },
-    [router, searchParams]
-  );
+export function TaskFilters({ q, status, onQChange, onStatusChange }: TaskFiltersProps) {
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function handleSearch(e: React.ChangeEvent<HTMLInputElement>) {
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
-      updateParam("q", e.target.value);
+      onQChange(e.target.value);
     }, 300);
   }
 
@@ -55,7 +44,7 @@ export function TaskFilters() {
         {STATUSES.map((s) => (
           <button
             key={s.value}
-            onClick={() => updateParam("status", s.value)}
+            onClick={() => onStatusChange(s.value)}
             className={`h-7 rounded-md px-2.5 text-xs transition-colors ${
               status === s.value
                 ? "bg-accent text-accent-foreground font-medium"

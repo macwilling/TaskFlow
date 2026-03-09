@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -28,6 +29,17 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  // Optimistic active href — set immediately on click, cleared when pathname updates
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPendingHref(null);
+  }, [pathname]);
+
+  function isActive(href: string) {
+    const check = pendingHref ?? pathname;
+    return check === href || check.startsWith(href + "/");
+  }
 
   return (
     <>
@@ -40,12 +52,13 @@ export function Sidebar() {
       {/* Primary nav */}
       <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-2">
         {navItems.map(({ href, label, icon: Icon }) => {
-          const active =
-            pathname === href || pathname.startsWith(href + "/");
+          const active = isActive(href);
           return (
             <Link
               key={href}
               href={href}
+              prefetch={true}
+              onClick={() => setPendingHref(href)}
               className={cn(
                 "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm transition-colors",
                 active
