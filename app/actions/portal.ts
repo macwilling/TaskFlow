@@ -1,4 +1,6 @@
 "use server";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Resend } from "resend";
@@ -84,7 +86,7 @@ export async function sendPortalSignInLinkAction(
     type: "magiclink",
     email: client.email,
     options: {
-      redirectTo: `${appUrl}/auth/callback?next=/portal/${tenant.slug}`,
+      redirectTo: `${appUrl}/portal/${tenant.slug}/auth-callback`,
     },
   });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -130,6 +132,172 @@ export async function sendPortalSignInLinkAction(
 
   if (sendError) return { error: (sendError as Error).message };
   return { success: true };
+}
+
+// ─── Finalize portal session (called client-side after hash-fragment auth) ───
+//
+// Admin-generated magic links use the OTP/implicit flow: Supabase redirects
+// back with access_token in the URL hash, NOT a code parameter.  The browser
+// Supabase client detects the hash, stores the session in cookies, and then
+// the PortalAuthCallbackClient calls this action to create the profile row
+// (first-time sign-in) or verify the existing one (returning user).
+
+export async function finalizePortalSessionAction(
+  tenantSlug: string
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { error: "No session found." };
+
+  // Check for an existing profile (returning user)
+  const { data: existingProfile } = await supabase
+    .from("profiles")
+    .select("id, role")
+    .eq("id", user.id)
+    .single();
+
+  if (existingProfile) {
+    if (existingProfile.role !== "client") {
+      await supabase.auth.signOut();
+      return { error: "Unauthorized." };
+    }
+    return {}; // Returning client — nothing to set up
+  }
+
+  // First-time sign-in: set up the portal account
+  const admin = createAdminClient();
+
+  const { data: tenant } = await admin
+    .from("tenants")
+    .select("id, slug")
+    .eq("slug", tenantSlug)
+    .single();
+
+  if (!tenant) {
+    await supabase.auth.signOut();
+    return { error: "Tenant not found." };
+  }
+
+  // Match the user's email to a clients record in this tenant
+  const { data: client } = await admin
+    .from("clients")
+    .select("id")
+    .eq("email", user.email!)
+    .eq("tenant_id", tenant.id)
+    .single();
+
+  if (!client) {
+    await supabase.auth.signOut();
+    return { error: "not_invited" };
+  }
+
+  const displayName =
+    user.user_metadata?.full_name ??
+    user.user_metadata?.name ??
+    user.email?.split("@")[0] ??
+    "Client";
+
+  await admin.from("profiles").insert({
+    id: user.id,
+    tenant_id: tenant.id,
+    role: "client",
+    full_name: displayName,
+  });
+
+  // Update the pending access row (if it exists) or create a new one
+  const { data: existingAccess } = await admin
+    .from("client_portal_access")
+    .select("id")
+    .eq("client_id", client.id)
+    .eq("tenant_id", tenant.id)
+    .maybeSingle();
+
+  if (existingAccess) {
+    await admin
+      .from("client_portal_access")
+      .update({ user_id: user.id, accepted_at: new Date().toISOString() })
+      .eq("client_id", client.id)
+      .eq("tenant_id", tenant.id);
+  } else {
+    await admin.from("client_portal_access").insert({
+      tenant_id: tenant.id,
+      client_id: client.id,
+      user_id: user.id,
+      accepted_at: new Date().toISOString(),
+    });
+  }
+
+  await admin.auth.admin.updateUserById(user.id, {
+    app_metadata: {
+      role: "client",
+      tenant_id: tenant.id,
+      tenant_slug: tenant.slug,
+    },
+  });
+
+  return {};
+}
+
+// ─── Create task from portal (client role) ───────────────────────────────────
+
+/**
+ * Allows a portal client to submit a new task request.
+ * tenantSlug is bound at call-site via .bind() so we can redirect back to the portal.
+ */
+export async function createPortalTaskAction(
+  tenantSlug: string,
+  _prev: { error?: string } | null,
+  formData: FormData
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user || user.app_metadata?.role !== "client") {
+    return { error: "Unauthorized." };
+  }
+
+  const tenantId = user.app_metadata?.tenant_id as string | undefined;
+  if (!tenantId) return { error: "No tenant found." };
+
+  const { data: access } = await supabase
+    .from("client_portal_access")
+    .select("client_id")
+    .eq("user_id", user.id)
+    .single();
+
+  if (!access?.client_id) return { error: "Portal access not found." };
+
+  const title = (formData.get("title") as string)?.trim();
+  if (!title) return { error: "Title is required." };
+
+  const admin = createAdminClient();
+
+  const { data: taskNumber, error: numError } = await admin.rpc(
+    "next_task_number_for_client",
+    { p_client_id: access.client_id }
+  );
+  if (numError) return { error: numError.message };
+
+  const { data, error } = await admin
+    .from("tasks")
+    .insert({
+      tenant_id: tenantId,
+      client_id: access.client_id,
+      title,
+      task_number: taskNumber,
+    })
+    .select("id")
+    .single();
+
+  if (error || !data) return { error: error?.message ?? "Failed to create task." };
+
+  revalidatePath(`/portal/${tenantSlug}`);
+  redirect(`/portal/${tenantSlug}/tasks/${data.id}`);
 }
 
 export async function revokePortalAccessAction(

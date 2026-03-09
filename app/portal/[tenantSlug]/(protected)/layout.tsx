@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient, getCachedUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -66,9 +67,25 @@ export default async function PortalLayout({
       )}
       <header className="border-b border-border bg-background/95 backdrop-blur sticky top-0 z-10">
         <div className="mx-auto max-w-4xl px-6 h-12 flex items-center justify-between">
-          <span className="text-sm font-semibold text-foreground">
-            {businessName}
-          </span>
+          <div className="flex items-center gap-6">
+            <span className="text-sm font-semibold text-foreground">
+              {businessName}
+            </span>
+            <nav className="flex items-center gap-1">
+              <Link
+                href={`/portal/${tenantSlug}`}
+                className="text-sm px-2.5 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+              >
+                Tasks
+              </Link>
+              <Link
+                href={`/portal/${tenantSlug}/invoices`}
+                className="text-sm px-2.5 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+              >
+                Invoices
+              </Link>
+            </nav>
+          </div>
           {!isImpersonating && <PortalSignOutButton tenantSlug={tenantSlug} />}
         </div>
       </header>

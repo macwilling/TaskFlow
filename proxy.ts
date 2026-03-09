@@ -19,11 +19,13 @@ function isAdminRoute(pathname: string): boolean {
 }
 
 function isPortalProtectedRoute(pathname: string): boolean {
-  // Portal routes except the login page itself
+  // Portal routes except the login page and the auth-callback page
+  // (auth-callback must be reachable before the session is established)
   return (
     pathname.startsWith("/portal/") &&
     !pathname.endsWith("/login") &&
-    !pathname.includes("/login?")
+    !pathname.includes("/login?") &&
+    !pathname.endsWith("/auth-callback")
   );
 }
 

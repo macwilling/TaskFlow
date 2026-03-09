@@ -3,6 +3,7 @@ import { createClient, getCachedUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getImpersonationPayload } from "@/lib/portal/impersonation";
 import { TaskStatusBadge, TaskPriorityBadge } from "@/components/tasks/TaskStatusBadge";
+import { PortalCreateTaskDialog } from "@/components/portal/PortalCreateTaskDialog";
 
 function formatDate(d: string | null) {
   if (!d) return null;
@@ -70,11 +71,14 @@ export default async function PortalDashboardPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-lg font-semibold">Your Tasks</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          View and track the tasks your consultant is working on.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-lg font-semibold">Your Tasks</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            View and track the tasks your consultant is working on.
+          </p>
+        </div>
+        {!isImpersonating && <PortalCreateTaskDialog tenantSlug={tenantSlug} />}
       </div>
 
       {!tasks?.length ? (
