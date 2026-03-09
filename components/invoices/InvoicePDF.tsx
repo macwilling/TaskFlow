@@ -98,12 +98,20 @@ const styles = StyleSheet.create({
     lineHeight: 1.5,
   },
   // Header
-  header: { flexDirection: "row", justifyContent: "space-between", marginBottom: 32 },
-  businessName: { fontSize: 14, fontWeight: 700, color: ACCENT },
-  businessInfo: { fontSize: 8, color: GRAY, marginTop: 4 },
-  invoiceTitle: { fontSize: 22, fontWeight: 700, color: "#1f2328", textAlign: "right" },
-  invoiceMeta: { fontSize: 8, color: GRAY, textAlign: "right", marginTop: 4 },
-  invoiceNumber: { fontSize: 10, fontWeight: 700, color: ACCENT, textAlign: "right", marginTop: 2 },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingBottom: 32,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+    marginBottom: 28,
+  },
+  businessName: { fontSize: 18, fontWeight: 700, color: ACCENT, marginBottom: 8 },
+  businessInfoBlock: { gap: 3 },
+  businessContactBlock: { gap: 3, marginTop: 8 },
+  businessInfo: { fontSize: 9, color: "#4a5565", lineHeight: 1.4 },
+  invoiceTitle: { fontSize: 27, fontWeight: 700, color: "#101828", textAlign: "right" },
+  invoiceNumber: { fontSize: 9, color: GRAY, textAlign: "right", marginTop: 6 },
   // Bill-to
   billToSection: { flexDirection: "row", marginBottom: 28 },
   billToBlock: { flex: 1 },
@@ -133,6 +141,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 8,
   },
+  colNum: { width: 20, textAlign: "right", marginRight: 8 },
   colDesc: { flex: 1 },
   colQty: { width: 50, textAlign: "right" },
   colRate: { width: 70, textAlign: "right" },
@@ -157,13 +166,20 @@ const styles = StyleSheet.create({
   totalLabelBold: { fontSize: 10, fontWeight: 700 },
   totalValueBold: { fontSize: 10, fontWeight: 700, color: ACCENT },
   // Memo
-  memoSection: { marginBottom: 24 },
+  memoSection: {
+    marginBottom: 24,
+    borderTopWidth: 1,
+    borderColor: BORDER,
+    paddingTop: 12,
+  },
   memoLabel: { fontSize: 7, fontWeight: 700, color: GRAY, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 },
   memoText: { fontSize: 8, color: GRAY },
   // Footer
   footer: { borderTopWidth: 1, borderColor: BORDER, paddingTop: 12, marginTop: "auto" },
   footerText: { fontSize: 7, color: GRAY, textAlign: "center" },
+  pageNumber: { fontSize: 7, color: GRAY, textAlign: "center", marginTop: 2 },
 });
+
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -192,13 +208,14 @@ export function InvoicePDF({ invoice, settings }: InvoicePDFProps) {
   }
   if (addr?.country && addr.country !== "US") billingLines.push(addr.country);
 
-  const businessLines: string[] = [];
-  if (settings.address_line1) businessLines.push(settings.address_line1);
-  if (settings.address_line2) businessLines.push(settings.address_line2);
+  const businessAddrLines: string[] = [];
+  if (settings.address_line1) businessAddrLines.push(settings.address_line1);
+  if (settings.address_line2) businessAddrLines.push(settings.address_line2);
   const cityLine = [settings.city, settings.state, settings.postal_code].filter(Boolean).join(", ");
-  if (cityLine) businessLines.push(cityLine);
-  if (settings.email) businessLines.push(settings.email);
-  if (settings.phone) businessLines.push(settings.phone);
+  if (cityLine) businessAddrLines.push(cityLine);
+  const businessContactLines: string[] = [];
+  if (settings.email) businessContactLines.push(settings.email);
+  if (settings.phone) businessContactLines.push(settings.phone);
 
   const sortedItems = [...invoice.invoice_line_items].sort((a, b) => a.sort_order - b.sort_order);
   const subtotal = Number(invoice.subtotal);
@@ -222,16 +239,24 @@ export function InvoicePDF({ invoice, settings }: InvoicePDFProps) {
         <View style={styles.header}>
           <View>
             <Text style={styles.businessName}>{settings.business_name ?? "Your Business"}</Text>
-            {businessLines.map((line, i) => (
-              <Text key={i} style={styles.businessInfo}>{line}</Text>
-            ))}
+            {businessAddrLines.length > 0 && (
+              <View style={styles.businessInfoBlock}>
+                {businessAddrLines.map((line, i) => (
+                  <Text key={i} style={styles.businessInfo}>{line}</Text>
+                ))}
+              </View>
+            )}
+            {businessContactLines.length > 0 && (
+              <View style={styles.businessContactBlock}>
+                {businessContactLines.map((line, i) => (
+                  <Text key={i} style={styles.businessInfo}>{line}</Text>
+                ))}
+              </View>
+            )}
           </View>
           <View>
             <Text style={styles.invoiceTitle}>INVOICE</Text>
             <Text style={styles.invoiceNumber}>{invoice.invoice_number}</Text>
-            <Text style={styles.invoiceMeta}>
-              {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-            </Text>
           </View>
         </View>
 
@@ -262,14 +287,20 @@ export function InvoicePDF({ invoice, settings }: InvoicePDFProps) {
         {/* Line items */}
         <View style={styles.table}>
           <View style={styles.tableHeader}>
-            <Text style={[styles.thText, styles.colDesc]}>Description</Text>
+            <Text style={[styles.thText, styles.colNum]}>#</Text>
+            <View style={styles.colDesc}>
+              <Text style={styles.thText}>Description</Text>
+            </View>
             <Text style={[styles.thText, styles.colQty]}>Qty</Text>
             <Text style={[styles.thText, styles.colRate]}>Rate</Text>
             <Text style={[styles.thText, styles.colAmount]}>Amount</Text>
           </View>
           {sortedItems.map((item, i) => (
             <View key={i} style={styles.tableRow}>
-              <Text style={[styles.tdText, styles.colDesc]}>{item.description}</Text>
+              <Text style={[styles.tdText, styles.colNum]}>{i + 1}</Text>
+              <View style={styles.colDesc}>
+                <Text style={styles.tdText}>{item.description}</Text>
+              </View>
               <Text style={[styles.tdText, styles.colQty]}>{Number(item.quantity).toFixed(2)}</Text>
               <Text style={[styles.tdText, styles.colRate]}>{currency(Number(item.unit_price))}</Text>
               <Text style={[styles.tdText, styles.colAmount]}>{currency(Number(item.amount))}</Text>
@@ -332,6 +363,12 @@ export function InvoicePDF({ invoice, settings }: InvoicePDFProps) {
           <Text style={styles.footerText}>
             {settings.business_name ?? "Your Business"} · {invoice.invoice_number} · Thank you for your business.
           </Text>
+          <Text
+            style={styles.pageNumber}
+            render={({ pageNumber, totalPages }) =>
+              totalPages > 1 ? `Page ${pageNumber} of ${totalPages}` : ""
+            }
+          />
         </View>
       </Page>
     </Document>
