@@ -38,7 +38,7 @@ const TIME_ENTRIES = [
     client_id: "client-1",
     task_id: "task-1",
     clients: { name: "Acme", color: "#0969da" },
-    tasks: { title: "Fix bug" },
+    tasks: { title: "Fix bug", task_number: 1, clients: { client_key: "AC" } },
   },
   {
     id: "te-2",

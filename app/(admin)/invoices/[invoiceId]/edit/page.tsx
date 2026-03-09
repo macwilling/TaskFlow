@@ -63,6 +63,8 @@ export default async function EditInvoicePage({
       sort_order: li.sort_order,
       time_entry_id: li.time_entry_id,
       imported: li.time_entry_id !== null,
+      taskId: null,
+      importedEntryIds: li.time_entry_id ? [li.time_entry_id] : [],
     }));
 
   const boundAction = updateInvoiceAction.bind(null, invoiceId);

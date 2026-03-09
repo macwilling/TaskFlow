@@ -35,8 +35,10 @@ interface TimeEntry {
   billable: boolean;
   billed: boolean;
   hourly_rate: number | null;
+  client_id: string;
+  task_id: string | null;
   clients: { name: string } | null;
-  tasks: { title: string } | null;
+  tasks: { title: string; task_number: number | null; clients: { client_key: string } | null } | null;
 }
 
 interface LineItem {
@@ -48,6 +50,8 @@ interface LineItem {
   sort_order: number;
   time_entry_id: string | null;
   imported: boolean; // true = came from a time entry
+  taskId: string | null; // task UUID this line item represents (null = manual or no-task entry)
+  importedEntryIds: string[]; // time entry IDs rolled into this line item
 }
 
 interface InvoiceBuilderClientProps {
@@ -196,38 +200,98 @@ export function InvoiceBuilderClient({
         sort_order: prev.length,
         time_entry_id: null,
         imported: false,
+        taskId: null,
+        importedEntryIds: [],
       },
     ]);
   }, [clients, selectedClientId]);
 
   const isEntryImported = useCallback(
-    (entryId: string) => lineItems.some((li) => li.time_entry_id === entryId),
+    (entryId: string) => lineItems.some((li) => li.importedEntryIds.includes(entryId)),
     [lineItems]
   );
 
   const toggleTimeEntry = useCallback(
     (entry: TimeEntry) => {
-      if (isEntryImported(entry.id)) {
-        setLineItems((prev) => prev.filter((li) => li.time_entry_id !== entry.id));
+      const rate = entry.hourly_rate ?? clients.find((c) => c.id === selectedClientId)?.default_rate ?? 0;
+      const qty = Number(entry.duration_hours);
+
+      if (entry.task_id) {
+        // Group by task: find existing line item for this task
+        const existingLi = lineItems.find((li) => li.taskId === entry.task_id);
+        if (existingLi) {
+          if (existingLi.importedEntryIds.includes(entry.id)) {
+            // Deselect: remove this entry's hours from the task line item
+            const newIds = existingLi.importedEntryIds.filter((id) => id !== entry.id);
+            if (newIds.length === 0) {
+              setLineItems((prev) => prev.filter((li) => li.key !== existingLi.key));
+            } else {
+              setLineItems((prev) =>
+                prev.map((li) => {
+                  if (li.key !== existingLi.key) return li;
+                  const newQty = li.quantity - qty;
+                  return { ...li, quantity: newQty, amount: newQty * li.unit_price, importedEntryIds: newIds };
+                })
+              );
+            }
+          } else {
+            // Select: add this entry's hours to existing task line item
+            setLineItems((prev) =>
+              prev.map((li) => {
+                if (li.key !== existingLi.key) return li;
+                const newQty = li.quantity + qty;
+                return { ...li, quantity: newQty, amount: newQty * li.unit_price, importedEntryIds: [...li.importedEntryIds, entry.id] };
+              })
+            );
+          }
+        } else {
+          // No line item for this task yet — create one
+          const task = entry.tasks;
+          const taskKey =
+            task?.clients?.client_key && task.task_number != null
+              ? `${task.clients.client_key}-${task.task_number}`
+              : null;
+          const desc = taskKey ? `${taskKey}: ${task!.title}` : (task?.title ?? entry.description);
+          setLineItems((prev) => [
+            ...prev,
+            {
+              key: nextKey(),
+              description: desc,
+              quantity: qty,
+              unit_price: rate,
+              amount: qty * rate,
+              sort_order: prev.length,
+              time_entry_id: null,
+              imported: true,
+              taskId: entry.task_id,
+              importedEntryIds: [entry.id],
+            },
+          ]);
+        }
       } else {
-        const rate = entry.hourly_rate ?? clients.find((c) => c.id === selectedClientId)?.default_rate ?? 0;
-        const qty = Number(entry.duration_hours);
-        setLineItems((prev) => [
-          ...prev,
-          {
-            key: nextKey(),
-            description: entry.description,
-            quantity: qty,
-            unit_price: rate,
-            amount: qty * rate,
-            sort_order: prev.length,
-            time_entry_id: entry.id,
-            imported: true,
-          },
-        ]);
+        // No task: one line item per entry (original behavior)
+        if (isEntryImported(entry.id)) {
+          setLineItems((prev) => prev.filter((li) => !li.importedEntryIds.includes(entry.id)));
+        } else {
+          setLineItems((prev) => [
+            ...prev,
+            {
+              key: nextKey(),
+              description: entry.description,
+              quantity: qty,
+              unit_price: rate,
+              amount: qty * rate,
+              sort_order: prev.length,
+              time_entry_id: entry.id,
+              imported: true,
+              taskId: null,
+              importedEntryIds: [entry.id],
+            },
+          ]);
+        }
       }
     },
-    [clients, isEntryImported, selectedClientId]
+    [clients, isEntryImported, lineItems, selectedClientId]
   );
 
   const lineItemsJson = JSON.stringify(

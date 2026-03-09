@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
 
   let query = supabase
     .from("time_entries")
-    .select("id, description, entry_date, start_time, duration_hours, billable, billed, hourly_rate, client_id, task_id, clients(name, color), tasks(title)")
+    .select("id, description, entry_date, start_time, duration_hours, billable, billed, hourly_rate, client_id, task_id, clients(name, color), tasks(title, task_number, clients(client_key))")
     .order("entry_date", { ascending: invoiceMode ? false : true });
 
   if (start) query = query.gte("entry_date", start);
