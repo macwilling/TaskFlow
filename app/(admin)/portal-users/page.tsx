@@ -20,7 +20,7 @@ async function PortalUsersTable() {
 
   const { data: rows, error } = await supabase
     .from("client_portal_access")
-    .select("client_id, accepted_at, invited_at, last_seen_at, user_id")
+    .select("client_id, accepted_at, invited_at, user_id")
     .order("invited_at", { ascending: false });
 
   if (error) {
@@ -86,9 +86,6 @@ async function PortalUsersTable() {
             <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">
               First login
             </th>
-            <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">
-              Last seen
-            </th>
             <th className="w-8" />
           </tr>
         </thead>
@@ -148,9 +145,6 @@ async function PortalUsersTable() {
                 </td>
                 <td className="px-4 py-3 text-muted-foreground tabular-nums">
                   {formatDate(row.accepted_at) ?? "—"}
-                </td>
-                <td className="px-4 py-3 text-muted-foreground tabular-nums">
-                  {formatDate((row as { last_seen_at?: string | null }).last_seen_at ?? null) ?? "Never"}
                 </td>
                 <td className="pr-3">
                   <Link href={`/clients/${row.client_id}`}>

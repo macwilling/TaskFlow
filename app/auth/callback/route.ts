@@ -112,10 +112,11 @@ export async function GET(request: NextRequest) {
       .eq("tenant_id", tenant.id)
       .maybeSingle();
 
+    const now = new Date().toISOString();
     if (existingAccess) {
       await admin
         .from("client_portal_access")
-        .update({ user_id: user.id, accepted_at: new Date().toISOString() })
+        .update({ user_id: user.id, accepted_at: now })
         .eq("client_id", client.id)
         .eq("tenant_id", tenant.id);
     } else {
@@ -123,7 +124,7 @@ export async function GET(request: NextRequest) {
         tenant_id: tenant.id,
         client_id: client.id,
         user_id: user.id,
-        accepted_at: new Date().toISOString(),
+        accepted_at: now,
       });
     }
 

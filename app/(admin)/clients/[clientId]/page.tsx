@@ -36,7 +36,7 @@ export default async function ClientDetailPage({
     supabase.from("clients").select("*").eq("id", clientId).single(),
     supabase
       .from("client_portal_access")
-      .select("accepted_at, invited_at, last_seen_at, user_id")
+      .select("accepted_at, invited_at, user_id")
       .eq("client_id", clientId)
       .maybeSingle(),
     supabase
@@ -149,7 +149,7 @@ export default async function ClientDetailPage({
               ? {
                   accepted_at: portalAccess.accepted_at ?? null,
                   invited_at: (portalAccess as { invited_at?: string | null }).invited_at ?? null,
-                  last_seen_at: (portalAccess as { last_seen_at?: string | null }).last_seen_at ?? null,
+                  last_seen_at: null,
                 }
               : null
           }
