@@ -275,6 +275,11 @@ export async function createPortalTaskAction(
   const title = (formData.get("title") as string)?.trim();
   if (!title) return { error: "Title is required." };
 
+  const description = (formData.get("description") as string)?.trim() || null;
+  const priority = (formData.get("priority") as string) || "medium";
+  const dueDateRaw = (formData.get("due_date") as string)?.trim();
+  const due_date = dueDateRaw || null;
+
   const admin = createAdminClient();
 
   const { data: taskNumber, error: numError } = await admin.rpc(
@@ -289,6 +294,9 @@ export async function createPortalTaskAction(
       tenant_id: tenantId,
       client_id: access.client_id,
       title,
+      description,
+      priority,
+      due_date,
       task_number: taskNumber,
     })
     .select("id")
