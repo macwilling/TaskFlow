@@ -9,27 +9,57 @@ import { finalizePortalSessionAction } from "@/app/actions/portal";
  * Handles the implicit-flow (hash-fragment) auth callback for admin-generated
  * portal invite links.
  *
- * Admin magic links created via admin.auth.admin.generateLink() use the OTP
- * (implicit) flow: Supabase redirects back with #access_token=… in the URL
- * hash rather than a ?code= query param.  Hash fragments are never sent to the
- * server, so a server-side route handler can't process them.  This client
- * component runs in the browser, lets @supabase/ssr detect the hash and set
- * the session cookie, then calls a server action to finish account setup.
+ * @supabase/ssr forces flowType:'pkce' on the browser client, so it only looks
+ * for ?code= and silently ignores #access_token= hash tokens.  The SIGNED_IN
+ * event never fires through onAuthStateChange for these links.
+ *
+ * Instead we manually parse the hash, call setSession() to store the tokens in
+ * the @supabase/ssr cookie adapter, then call a server action to finish account
+ * setup (profile, portal_access, app_metadata).
  */
 export function PortalAuthCallbackClient({ tenantSlug }: { tenantSlug: string }) {
   const router = useRouter();
   const handled = useRef(false);
 
   useEffect(() => {
+    if (handled.current) return;
+
     const supabase = createClient();
+    const hash = window.location.hash.substring(1);
+    const params = new URLSearchParams(hash);
+    const accessToken = params.get("access_token");
+    const refreshToken = params.get("refresh_token");
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (handled.current) return;
-
-      if (event === "SIGNED_IN" && session) {
+    if (!accessToken || !refreshToken) {
+      // No hash tokens — check for an existing session (returning user who
+      // somehow landed here, or a stale/bad link).
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (handled.current) return;
         handled.current = true;
+        if (session) {
+          router.replace(`/portal/${tenantSlug}`);
+        } else {
+          router.replace(`/portal/${tenantSlug}/login?error=auth_callback_error`);
+        }
+      });
+      return;
+    }
+
+    // Clear the hash from the URL so back-navigation doesn't re-trigger.
+    window.history.replaceState(null, "", window.location.pathname);
+
+    supabase.auth
+      .setSession({ access_token: accessToken, refresh_token: refreshToken })
+      .then(async ({ data, error }) => {
+        if (handled.current) return;
+        handled.current = true;
+
+        if (error || !data.session) {
+          router.replace(`/portal/${tenantSlug}/login?error=auth_callback_error`);
+          return;
+        }
+
+        // Cookies are now set — call the server action to finish setup.
         const result = await finalizePortalSessionAction(tenantSlug);
         if (result?.error === "not_invited") {
           router.replace(`/portal/${tenantSlug}/login?error=not_invited`);
@@ -38,21 +68,7 @@ export function PortalAuthCallbackClient({ tenantSlug }: { tenantSlug: string })
         } else {
           router.replace(`/portal/${tenantSlug}`);
         }
-      } else if (event === "INITIAL_SESSION") {
-        if (session) {
-          // Returning user who somehow landed on this page while already signed in
-          handled.current = true;
-          router.replace(`/portal/${tenantSlug}`);
-        } else if (!window.location.hash.includes("access_token")) {
-          // No hash tokens and no session — nothing will arrive; bail out
-          handled.current = true;
-          router.replace(`/portal/${tenantSlug}/login?error=auth_callback_error`);
-        }
-        // If there ARE hash tokens, stay and wait for SIGNED_IN
-      }
-    });
-
-    return () => subscription.unsubscribe();
+      });
   }, [tenantSlug, router]);
 
   return (
