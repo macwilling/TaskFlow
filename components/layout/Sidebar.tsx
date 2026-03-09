@@ -13,6 +13,7 @@ import {
   Settings,
   Zap,
   Mail,
+  Globe,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +23,7 @@ const navItems = [
   { href: "/tasks", label: "Tasks", icon: CheckSquare },
   { href: "/time", label: "Time", icon: Clock },
   { href: "/invoices", label: "Invoices", icon: FileText },
+  { href: "/portal-users", label: "Portal Users", icon: Globe },
   { href: "/reports", label: "Reports", icon: BarChart2 },
   { href: "/settings", label: "Settings", icon: Settings },
   { href: "/email-log", label: "Email Log", icon: Mail },

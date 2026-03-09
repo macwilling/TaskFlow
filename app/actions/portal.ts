@@ -164,7 +164,23 @@ export async function finalizePortalSessionAction(
       await supabase.auth.signOut();
       return { error: "Unauthorized." };
     }
-    return {}; // Returning client — nothing to set up
+    // Returning client — always refresh last_seen_at.
+    // Also patch accepted_at if it's somehow null (e.g. prior partial setup).
+    const now = new Date().toISOString();
+    const adminClient = createAdminClient();
+    const { data: accessRow } = await adminClient
+      .from("client_portal_access")
+      .select("accepted_at")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    await adminClient
+      .from("client_portal_access")
+      .update({
+        last_seen_at: now,
+        ...(accessRow && !accessRow.accepted_at ? { accepted_at: now } : {}),
+      })
+      .eq("user_id", user.id);
+    return {};
   }
 
   // First-time sign-in: set up the portal account
@@ -215,10 +231,11 @@ export async function finalizePortalSessionAction(
     .eq("tenant_id", tenant.id)
     .maybeSingle();
 
+  const now = new Date().toISOString();
   if (existingAccess) {
     await admin
       .from("client_portal_access")
-      .update({ user_id: user.id, accepted_at: new Date().toISOString() })
+      .update({ user_id: user.id, accepted_at: now, last_seen_at: now })
       .eq("client_id", client.id)
       .eq("tenant_id", tenant.id);
   } else {
@@ -226,7 +243,8 @@ export async function finalizePortalSessionAction(
       tenant_id: tenant.id,
       client_id: client.id,
       user_id: user.id,
-      accepted_at: new Date().toISOString(),
+      accepted_at: now,
+      last_seen_at: now,
     });
   }
 
