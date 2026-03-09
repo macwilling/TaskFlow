@@ -31,13 +31,23 @@ export function PortalAuthCallbackClient({ tenantSlug }: { tenantSlug: string })
     const refreshToken = params.get("refresh_token");
 
     if (!accessToken || !refreshToken) {
-      // No hash tokens — check for an existing session (returning user who
-      // somehow landed here, or a stale/bad link).
-      supabase.auth.getSession().then(({ data: { session } }) => {
+      // No hash tokens — check for an existing session. This covers two cases:
+      // 1. Returning user who already has a session (e.g. navigated back).
+      // 2. PKCE flow where @supabase/ssr exchanged ?code= automatically.
+      // In both cases we still call finalizePortalSessionAction so that
+      // accepted_at / last_seen_at are kept up-to-date.
+      supabase.auth.getSession().then(async ({ data: { session } }) => {
         if (handled.current) return;
         handled.current = true;
         if (session) {
-          router.replace(`/portal/${tenantSlug}`);
+          const result = await finalizePortalSessionAction(tenantSlug);
+          if (result?.error === "not_invited") {
+            router.replace(`/portal/${tenantSlug}/login?error=not_invited`);
+          } else if (result?.error) {
+            router.replace(`/portal/${tenantSlug}/login?error=auth_callback_error`);
+          } else {
+            router.replace(`/portal/${tenantSlug}`);
+          }
         } else {
           router.replace(`/portal/${tenantSlug}/login?error=auth_callback_error`);
         }
