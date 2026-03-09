@@ -94,7 +94,9 @@ const styles = StyleSheet.create({
     fontFamily: "Geist",
     fontSize: 9,
     color: "#1f2328",
-    padding: 48,
+    paddingTop: 48,
+    paddingHorizontal: 48,
+    paddingBottom: 72,
     lineHeight: 1.5,
   },
   // Header
@@ -111,7 +113,7 @@ const styles = StyleSheet.create({
   businessContactBlock: { gap: 3, marginTop: 8 },
   businessInfo: { fontSize: 9, color: "#4a5565", lineHeight: 1.4 },
   invoiceTitle: { fontSize: 27, fontWeight: 700, color: "#101828", textAlign: "right" },
-  invoiceNumber: { fontSize: 9, color: GRAY, textAlign: "right", marginTop: 6 },
+  invoiceNumber: { fontSize: 9, color: GRAY, textAlign: "right", marginBottom: 4 },
   // Bill-to
   billToSection: { flexDirection: "row", marginBottom: 28 },
   billToBlock: { flex: 1 },
@@ -175,7 +177,15 @@ const styles = StyleSheet.create({
   memoLabel: { fontSize: 7, fontWeight: 700, color: GRAY, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 },
   memoText: { fontSize: 8, color: GRAY },
   // Footer
-  footer: { borderTopWidth: 1, borderColor: BORDER, paddingTop: 12, marginTop: "auto" },
+  footer: {
+    position: "absolute",
+    bottom: 32,
+    left: 48,
+    right: 48,
+    borderTopWidth: 1,
+    borderColor: BORDER,
+    paddingTop: 10,
+  },
   footerText: { fontSize: 7, color: GRAY, textAlign: "center" },
   pageNumber: { fontSize: 7, color: GRAY, textAlign: "center", marginTop: 2 },
 });
@@ -255,8 +265,8 @@ export function InvoicePDF({ invoice, settings }: InvoicePDFProps) {
             )}
           </View>
           <View>
-            <Text style={styles.invoiceTitle}>INVOICE</Text>
             <Text style={styles.invoiceNumber}>{invoice.invoice_number}</Text>
+            <Text style={styles.invoiceTitle}>INVOICE</Text>
           </View>
         </View>
 
@@ -359,7 +369,7 @@ export function InvoicePDF({ invoice, settings }: InvoicePDFProps) {
         )}
 
         {/* Footer */}
-        <View style={styles.footer}>
+        <View fixed style={styles.footer}>
           <Text style={styles.footerText}>
             {settings.business_name ?? "Your Business"} · {invoice.invoice_number} · Thank you for your business.
           </Text>
