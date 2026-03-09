@@ -33,6 +33,7 @@ interface Task {
 interface TimeCalendarProps {
   clients: Client[];
   tasks: Task[];
+  initialEvents: object[];
 }
 
 function localDateStr(d: Date) {
@@ -50,9 +51,11 @@ function localTimeStr(d: Date) {
   ].join(":");
 }
 
-export function TimeCalendar({ clients, tasks }: TimeCalendarProps) {
+export function TimeCalendar({ clients, tasks, initialEvents }: TimeCalendarProps) {
   const router = useRouter();
   const calendarRef = useRef<FullCalendar>(null);
+  const isFirstFetch = useRef(true);
+  const initialEventsRef = useRef(initialEvents);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [prefillDate, setPrefillDate] = useState<string | undefined>();
@@ -67,6 +70,13 @@ export function TimeCalendar({ clients, tasks }: TimeCalendarProps) {
       successCallback: (events: object[]) => void,
       failureCallback: (error: Error) => void
     ) => {
+      // On the very first fetch, return the server-prefetched events immediately
+      // so the calendar renders without waiting for an API round-trip.
+      if (isFirstFetch.current) {
+        isFirstFetch.current = false;
+        successCallback(initialEventsRef.current);
+        return;
+      }
       try {
         const start = info.startStr.split("T")[0];
         const end = info.endStr.split("T")[0];

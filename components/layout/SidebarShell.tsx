@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { NavigationProgress } from "./NavigationProgress";
 
 interface SidebarShellProps {
   sidebar: React.ReactNode;
@@ -15,6 +16,8 @@ export function SidebarShell({ sidebar, userMenu, children }: SidebarShellProps)
 
   return (
     <div className="flex min-h-screen">
+      <NavigationProgress />
+
       {/* Mobile backdrop */}
       {mobileOpen && (
         <div

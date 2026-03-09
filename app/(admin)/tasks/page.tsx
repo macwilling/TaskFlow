@@ -4,35 +4,16 @@ import { createClient } from "@/lib/supabase/server";
 import { TopBar } from "@/components/layout/TopBar";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Button } from "@/components/ui/button";
-import { TaskListView } from "@/components/tasks/TaskListView";
-import { TaskBoardView } from "@/components/tasks/TaskBoardView";
-import { TaskFilters } from "@/components/tasks/TaskFilters";
-import { TaskViewToggle } from "@/components/tasks/TaskViewToggle";
+import { TasksView } from "@/components/tasks/TasksView";
 import { Plus } from "lucide-react";
 
-interface SearchParams {
-  q?: string;
-  status?: string;
-  view?: string;
-}
-
-export default async function TasksPage({
-  searchParams,
-}: {
-  searchParams: Promise<SearchParams>;
-}) {
-  const { q, status, view } = await searchParams;
+export default async function TasksPage() {
   const supabase = await createClient();
 
-  let query = supabase
+  const { data: tasks, error } = await supabase
     .from("tasks")
     .select("id, task_number, title, status, priority, due_date, created_at, clients(name, color, client_key)")
     .order("created_at", { ascending: false });
-
-  if (q) query = query.ilike("title", `%${q}%`);
-  if (status) query = query.eq("status", status);
-
-  const { data: tasks, error } = await query;
 
   return (
     <>
@@ -48,26 +29,14 @@ export default async function TasksPage({
         }
       />
       <PageContainer>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between gap-3">
-            <Suspense fallback={null}>
-              <TaskFilters />
-            </Suspense>
-            <Suspense fallback={null}>
-              <TaskViewToggle />
-            </Suspense>
-          </div>
-
-          {error ? (
-            <p className="text-sm text-destructive">Failed to load tasks: {error.message}</p>
-          ) : view === "board" ? (
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            <TaskBoardView tasks={(tasks ?? []) as any} />
-          ) : (
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            <TaskListView tasks={(tasks ?? []) as any} />
-          )}
-        </div>
+        {error ? (
+          <p className="text-sm text-destructive">Failed to load tasks: {error.message}</p>
+        ) : (
+          <Suspense fallback={null}>
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+            <TasksView tasks={(tasks ?? []) as any} />
+          </Suspense>
+        )}
       </PageContainer>
     </>
   );

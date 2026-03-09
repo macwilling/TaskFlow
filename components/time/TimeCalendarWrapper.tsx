@@ -69,6 +69,12 @@ interface Task {
   status: string;
 }
 
-export function TimeCalendarWrapper({ clients, tasks }: { clients: Client[]; tasks: Task[] }) {
-  return <TimeCalendarDynamic clients={clients} tasks={tasks} />;
+interface TimeCalendarWrapperProps {
+  clients: Client[];
+  tasks: Task[];
+  initialEvents: object[];
+}
+
+export function TimeCalendarWrapper({ clients, tasks, initialEvents }: TimeCalendarWrapperProps) {
+  return <TimeCalendarDynamic clients={clients} tasks={tasks} initialEvents={initialEvents} />;
 }
