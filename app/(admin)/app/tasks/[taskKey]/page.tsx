@@ -246,7 +246,7 @@ export default async function TaskDetailPage({
     <>
       <TopBar
         breadcrumbs={[
-          { label: "Tasks", href: "/tasks" },
+          { label: "Tasks", href: "/app/tasks" },
           { label: displayKey ?? task.title },
         ]}
         actions={

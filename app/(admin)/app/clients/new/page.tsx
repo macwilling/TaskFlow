@@ -8,7 +8,7 @@ export default function NewClientPage() {
     <>
       <TopBar title="New client" description="Add a new client to your workspace." />
       <PageContainer>
-        <ClientForm action={createClientAction} cancelHref="/clients" />
+        <ClientForm action={createClientAction} cancelHref="/app/clients" />
       </PageContainer>
     </>
   );

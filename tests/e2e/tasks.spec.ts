@@ -54,7 +54,7 @@ test.beforeEach(async ({ page }) => {
 
 test.describe("task management", () => {
   test("create a client and verify it appears in the client list", async ({ page }) => {
-    if (!(await requireAuth(page, "/clients/new"))) {
+    if (!(await requireAuth(page, "/app/clients/new"))) {
       test.skip();
       return;
     }
@@ -69,7 +69,7 @@ test.describe("task management", () => {
   });
 
   test("create a task and verify it appears in the task list", async ({ page }) => {
-    if (!(await requireAuth(page, "/tasks/new"))) {
+    if (!(await requireAuth(page, "/app/tasks/new"))) {
       test.skip();
       return;
     }
@@ -97,7 +97,7 @@ test.describe("task management", () => {
   test("open task → editor loads, type content, comment, time entry, close, delete", async ({
     page,
   }) => {
-    if (!(await requireAuth(page, "/tasks"))) {
+    if (!(await requireAuth(page, "/app/tasks"))) {
       test.skip();
       return;
     }

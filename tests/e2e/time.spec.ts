@@ -29,7 +29,7 @@ const EDITED_HOURS = "3";
 
 test.describe("time tracking", () => {
   test("calendar renders on the time page", async ({ page }) => {
-    if (!(await requireAuth(page, "/time"))) {
+    if (!(await requireAuth(page, "/app/time"))) {
       test.skip();
       return;
     }
@@ -41,7 +41,7 @@ test.describe("time tracking", () => {
   });
 
   test("clicking a day opens the time entry dialog with a pre-filled date", async ({ page }) => {
-    if (!(await requireAuth(page, "/time"))) {
+    if (!(await requireAuth(page, "/app/time"))) {
       test.skip();
       return;
     }
@@ -59,7 +59,7 @@ test.describe("time tracking", () => {
   });
 
   test("create a time entry → event appears on calendar", async ({ page }) => {
-    if (!(await requireAuth(page, "/time"))) {
+    if (!(await requireAuth(page, "/app/time"))) {
       test.skip();
       return;
     }
@@ -96,7 +96,7 @@ test.describe("time tracking", () => {
   });
 
   test("edit a time entry → duration updates on calendar", async ({ page }) => {
-    if (!(await requireAuth(page, "/time"))) {
+    if (!(await requireAuth(page, "/app/time"))) {
       test.skip();
       return;
     }
@@ -124,7 +124,7 @@ test.describe("time tracking", () => {
   });
 
   test("delete a time entry → event count decreases", async ({ page }) => {
-    if (!(await requireAuth(page, "/time"))) {
+    if (!(await requireAuth(page, "/app/time"))) {
       test.skip();
       return;
     }
@@ -154,7 +154,7 @@ test.describe("time tracking", () => {
   });
 
   test("switch between week and month views — events remain visible", async ({ page }) => {
-    if (!(await requireAuth(page, "/time"))) {
+    if (!(await requireAuth(page, "/app/time"))) {
       test.skip();
       return;
     }
@@ -178,7 +178,7 @@ test.describe("time tracking", () => {
   test("drag event to a different day → event stays on calendar (not reverted)", async ({
     page,
   }) => {
-    if (!(await requireAuth(page, "/time"))) {
+    if (!(await requireAuth(page, "/app/time"))) {
       test.skip();
       return;
     }

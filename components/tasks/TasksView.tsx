@@ -24,7 +24,7 @@ function syncUrl(status: string, q: string, view: string) {
   if (q) params.set("q", q);
   if (view !== "list") params.set("view", view);
   const qs = params.toString();
-  window.history.replaceState(null, "", qs ? `/tasks?${qs}` : "/tasks");
+  window.history.replaceState(null, "", qs ? `/app/tasks?${qs}` : "/tasks");
 }
 
 export function TasksView({ tasks }: { tasks: Task[] }) {

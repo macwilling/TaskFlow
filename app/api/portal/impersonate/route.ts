@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
   const clientId = searchParams.get("clientId");
 
   if (!clientId) {
-    return NextResponse.redirect(`${origin}/dashboard`);
+    return NextResponse.redirect(`${origin}/app/dashboard`);
   }
 
   // Verify admin session
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     .single();
 
   if (!access) {
-    return NextResponse.redirect(`${origin}/clients/${clientId}?error=no_portal_access`);
+    return NextResponse.redirect(`${origin}/app/clients/${clientId}?error=no_portal_access`);
   }
 
   const { data: tenant } = await admin
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     .single();
 
   if (!tenant) {
-    return NextResponse.redirect(`${origin}/dashboard`);
+    return NextResponse.redirect(`${origin}/app/dashboard`);
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

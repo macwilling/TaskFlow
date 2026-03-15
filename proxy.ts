@@ -3,13 +3,15 @@ import { updateSession } from "@/lib/supabase/middleware";
 import { decodePayload, IMPERSONATION_COOKIE } from "@/lib/portal/impersonation";
 
 const ADMIN_ROUTES = [
-  "/dashboard",
-  "/clients",
-  "/tasks",
-  "/time",
-  "/invoices",
-  "/reports",
-  "/settings",
+  "/app/dashboard",
+  "/app/clients",
+  "/app/tasks",
+  "/app/time",
+  "/app/invoices",
+  "/app/reports",
+  "/app/settings",
+  "/app/email-log",
+  "/app/portal-users",
 ];
 
 function isAdminRoute(pathname: string): boolean {
@@ -98,6 +100,14 @@ export async function proxy(request: NextRequest) {
     return withTenantHeader(supabaseResponse);
   }
 
+  // Auth pages belong on the root domain only. Redirect any attempt to load
+  // /auth/* on a tenant subdomain back to the root-domain login page so that
+  // admins always authenticate on billabledesk.com, not on their subdomain.
+  if (tenantSlug && pathname.startsWith("/auth/") && !!baseDomain && baseDomain !== "localhost") {
+    const rootLogin = `https://${baseDomain}/auth/login`;
+    return NextResponse.redirect(rootLogin);
+  }
+
   // Admin route guard
   if (isAdminRoute(pathname)) {
     if (!user) {
@@ -105,10 +115,7 @@ export async function proxy(request: NextRequest) {
     }
     if (user.app_metadata?.role !== "admin") {
       // Authenticated client users should land on their portal, not the login page
-      if (user.app_metadata?.tenant_slug) {
-        return NextResponse.redirect(new URL("/portal", request.url));
-      }
-      return NextResponse.redirect(new URL("/auth/login", request.url));
+      return NextResponse.redirect(new URL("/portal", request.url));
     }
     return withTenantHeader(supabaseResponse);
   }

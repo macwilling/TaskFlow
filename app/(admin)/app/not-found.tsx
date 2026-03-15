@@ -13,7 +13,7 @@ export default function AdminNotFound() {
         </p>
       </div>
       <Button size="sm" variant="outline" asChild>
-        <Link href="/dashboard">Go to dashboard</Link>
+        <Link href="/app/dashboard">Go to dashboard</Link>
       </Button>
     </div>
   );

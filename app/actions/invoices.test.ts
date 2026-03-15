@@ -118,8 +118,8 @@ describe("createInvoiceAction", () => {
 
     await createInvoiceAction(null, makeInvoiceFormData());
 
-    expect(revalidatePath).toHaveBeenCalledWith("/invoices");
-    expect(redirect).toHaveBeenCalledWith("/invoices/inv-1");
+    expect(revalidatePath).toHaveBeenCalledWith("/app/invoices");
+    expect(redirect).toHaveBeenCalledWith("/app/invoices/inv-1");
   });
 
   // Issue #30: tenant_id from profile used in invoice + line item inserts
@@ -270,7 +270,7 @@ describe("updateInvoiceAction", () => {
 
     await updateInvoiceAction("inv-1", null, makeInvoiceFormData());
 
-    expect(redirect).toHaveBeenCalledWith("/invoices/inv-1");
+    expect(redirect).toHaveBeenCalledWith("/app/invoices/inv-1");
   });
 });
 
@@ -307,7 +307,7 @@ describe("sendInvoiceAction", () => {
 
     const result = await sendInvoiceAction("inv-1");
     expect(result).toEqual({});
-    expect(revalidatePath).toHaveBeenCalledWith("/invoices/inv-1");
+    expect(revalidatePath).toHaveBeenCalledWith("/app/invoices/inv-1");
   });
 
   // Issue #34: valid status transition sent→sent (resend)
@@ -496,7 +496,7 @@ describe("deleteInvoiceAction", () => {
       .mockReturnValueOnce(makeChain({ data: null, error: null }));
 
     await deleteInvoiceAction("inv-1");
-    expect(revalidatePath).toHaveBeenCalledWith("/invoices");
-    expect(redirect).toHaveBeenCalledWith("/invoices");
+    expect(revalidatePath).toHaveBeenCalledWith("/app/invoices");
+    expect(redirect).toHaveBeenCalledWith("/app/invoices");
   });
 });

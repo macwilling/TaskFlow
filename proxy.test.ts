@@ -112,15 +112,15 @@ describe("getTenantSlugFromHost", () => {
 
 describe("proxy: admin routes", () => {
   const adminRoutes = [
-    "/dashboard",
-    "/clients",
-    "/clients/123",
-    "/tasks",
-    "/tasks/AC-1",
-    "/time",
-    "/invoices",
-    "/reports",
-    "/settings",
+    "/app/dashboard",
+    "/app/clients",
+    "/app/clients/123",
+    "/app/tasks",
+    "/app/tasks/AC-1",
+    "/app/time",
+    "/app/invoices",
+    "/app/reports",
+    "/app/settings",
   ];
 
   it("redirects unauthenticated users to /auth/login", async () => {
@@ -131,21 +131,21 @@ describe("proxy: admin routes", () => {
     }
   });
 
-  it("redirects client role without tenant_slug to /auth/login", async () => {
+  it("redirects client role to /portal when hitting an admin route", async () => {
     mockSession({ id: "u1", app_metadata: { role: "client" } });
-    const res = await proxy(makeRequest("/dashboard"));
-    expect(res.headers.get("location")).toContain("/auth/login");
+    const res = await proxy(makeRequest("/app/dashboard"));
+    expect(res.headers.get("location")).toContain("/portal");
   });
 
-  it("redirects client role with tenant_slug to their portal", async () => {
+  it("redirects client role with tenant_slug to /portal when hitting an admin route", async () => {
     mockSession({ id: "u1", app_metadata: { role: "client", tenant_slug: "acme" } });
-    const res = await proxy(makeRequest("/dashboard"));
-    expect(res.headers.get("location")).toContain("/portal/acme");
+    const res = await proxy(makeRequest("/app/dashboard"));
+    expect(res.headers.get("location")).toContain("/portal");
   });
 
   it("passes through for admin role", async () => {
     mockSession({ id: "u1", app_metadata: { role: "admin" } });
-    const res = await proxy(makeRequest("/dashboard"));
+    const res = await proxy(makeRequest("/app/dashboard"));
     expect(res).toBe(fakeResponse);
   });
 

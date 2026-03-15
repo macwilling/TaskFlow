@@ -140,8 +140,8 @@ describe("createClientAction", () => {
 
     await createClientAction(null, makeFormData());
 
-    expect(revalidatePath).toHaveBeenCalledWith("/clients");
-    expect(redirect).toHaveBeenCalledWith("/clients/client-new");
+    expect(revalidatePath).toHaveBeenCalledWith("/app/clients");
+    expect(redirect).toHaveBeenCalledWith("/app/clients/client-new");
   });
 
   // Issue #30: tenant isolation — tenant_id comes from profile, not formData
@@ -208,9 +208,9 @@ describe("updateClientAction", () => {
     const fd = makeFormData({ email: "same@example.com" });
     await updateClientAction("client-1", null, fd);
 
-    expect(revalidatePath).toHaveBeenCalledWith("/clients/client-1");
-    expect(revalidatePath).toHaveBeenCalledWith("/clients");
-    expect(redirect).toHaveBeenCalledWith("/clients/client-1");
+    expect(revalidatePath).toHaveBeenCalledWith("/app/clients/client-1");
+    expect(revalidatePath).toHaveBeenCalledWith("/app/clients");
+    expect(redirect).toHaveBeenCalledWith("/app/clients/client-1");
   });
 
   it("syncs auth email when email changed and portal access exists", async () => {
@@ -253,7 +253,7 @@ describe("archiveClientAction", () => {
 
     await archiveClientAction("client-1", true);
 
-    expect(revalidatePath).toHaveBeenCalledWith("/clients/client-1");
-    expect(revalidatePath).toHaveBeenCalledWith("/clients");
+    expect(revalidatePath).toHaveBeenCalledWith("/app/clients/client-1");
+    expect(revalidatePath).toHaveBeenCalledWith("/app/clients");
   });
 });

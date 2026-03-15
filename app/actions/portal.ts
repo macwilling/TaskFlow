@@ -87,7 +87,7 @@ export async function sendPortalSignInLinkAction(
     type: "magiclink",
     email: client.email,
     options: {
-      redirectTo: tenantUrl(tenant.slug, "/auth/callback"),
+      redirectTo: tenantUrl(tenant.slug, "/portal/auth-callback"),
     },
   });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -365,6 +365,6 @@ export async function revokePortalAccessAction(
     .eq("tenant_id", profile.tenant_id);
 
   const { revalidatePath } = await import("next/cache");
-  revalidatePath(`/clients/${clientId}`);
+  revalidatePath(`/app/clients/${clientId}`);
   return { success: true };
 }

@@ -62,7 +62,7 @@ export function PortalLoginForm({
     const { error: otpError } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: `${window.location.origin}/portal/auth-callback`,
       },
     });
     if (otpError) {
@@ -80,7 +80,7 @@ export function PortalLoginForm({
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${window.location.origin}/portal/auth-callback/code`,
       },
     });
     if (oauthError) {

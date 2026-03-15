@@ -29,7 +29,7 @@ async function buildMinimalInvoice(
 ) {
   const { dueDate, unitPrice = 100, quantity = 2 } = opts;
 
-  await page.goto("/invoices/new");
+  await page.goto("/app/invoices/new");
   // Wait for the client dropdown to be interactive instead of networkidle,
   // which is unreliable under concurrent test load.
   await page.locator('[id="client_id"]').waitFor({ state: "visible", timeout: 30_000 });
@@ -194,7 +194,7 @@ test.describe("billing — invoice management", () => {
     await expect(page.getByText(/overdue/i).first()).toBeVisible({ timeout: 10_000 });
 
     // Verify overdue badge appears on the list page too
-    await page.goto("/invoices");
+    await page.goto("/app/invoices");
     await page.waitForLoadState("networkidle");
     await expect(page.getByText(/overdue/i).first()).toBeVisible();
   });
@@ -227,7 +227,7 @@ test.describe("billing — invoice management", () => {
   // ── 9. Reports page loads without error ───────────────────────────────────
 
   test("reports page loads revenue and time summary without errors", async ({ page }) => {
-    await page.goto("/reports");
+    await page.goto("/app/reports");
     await page.waitForLoadState("networkidle");
 
     // Must not show a generic error

@@ -101,7 +101,7 @@ export async function createClientAction(
 
   if (error) return { error: error.message };
 
-  revalidatePath("/clients");
+  revalidatePath("/app/clients");
   redirect(`/clients/${data.id}`);
 }
 
@@ -167,7 +167,7 @@ export async function updateClientAction(
   }
 
   revalidatePath(`/clients/${clientId}`);
-  revalidatePath("/clients");
+  revalidatePath("/app/clients");
   redirect(`/clients/${clientId}`);
 }
 
@@ -209,5 +209,5 @@ export async function archiveClientAction(clientId: string, archive: boolean) {
     .eq("id", clientId);
 
   revalidatePath(`/clients/${clientId}`);
-  revalidatePath("/clients");
+  revalidatePath("/app/clients");
 }

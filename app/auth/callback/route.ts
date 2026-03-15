@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getTenantSlugFromHost } from "@/proxy";
 
 function generateSlug(name: string): string {
   return (
@@ -44,11 +43,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/auth/login?error=auth_callback_error`);
   }
 
-  // Detect portal vs admin callback via subdomain
-  const host = request.headers.get("host") ?? "";
-  const subdomain = getTenantSlugFromHost(host);
-  const isPortalCallback = !!subdomain;
-
   // Check whether this user already has a profile (returning user)
   const { data: existingProfile } = await supabase
     .from("profiles")
@@ -59,91 +53,13 @@ export async function GET(request: NextRequest) {
   if (existingProfile) {
     const tenantSlug = user.app_metadata?.tenant_slug as string | undefined;
     if (existingProfile.role === "client") {
+      // A client user who hit the admin callback — send them to their portal
       if (tenantSlug) return NextResponse.redirect(tenantUrl(tenantSlug, "/portal"));
       return NextResponse.redirect(`${origin}/auth/login?error=auth_callback_error`);
     }
     // Admin returning user
-    if (tenantSlug) return NextResponse.redirect(tenantUrl(tenantSlug, "/dashboard"));
-    return NextResponse.redirect(`${origin}/dashboard`);
-  }
-
-  // ── Portal first-time sign-in (OTP magic link OR Google OAuth) ──────────
-  // No profile + callback arrived on a tenant subdomain.
-  // Match the user's email to an existing clients record to authorize access.
-  if (isPortalCallback) {
-    const portalSlug = subdomain;
-    const admin = createAdminClient();
-
-    const { data: tenant } = await admin
-      .from("tenants")
-      .select("id, slug")
-      .eq("slug", portalSlug)
-      .single();
-    if (!tenant) {
-      await supabase.auth.signOut();
-      return NextResponse.redirect(
-        `${origin}/portal/login?error=auth_callback_error`
-      );
-    }
-
-    const { data: client } = await admin
-      .from("clients")
-      .select("id")
-      .eq("email", user.email)
-      .eq("tenant_id", tenant.id)
-      .single();
-    if (!client) {
-      await supabase.auth.signOut();
-      return NextResponse.redirect(
-        `${origin}/portal/login?error=not_invited`
-      );
-    }
-
-    const displayName =
-      user.user_metadata?.full_name ??
-      user.user_metadata?.name ??
-      user.email?.split("@")[0] ??
-      "Client";
-
-    await admin.from("profiles").insert({
-      id: user.id,
-      tenant_id: tenant.id,
-      role: "client",
-      full_name: displayName,
-    });
-
-    // Update existing pending row if present (OTP invite flow),
-    // otherwise insert a new row (e.g. Google OAuth without prior invite).
-    const { data: existingAccess } = await admin
-      .from("client_portal_access")
-      .select("id")
-      .eq("client_id", client.id)
-      .eq("tenant_id", tenant.id)
-      .maybeSingle();
-
-    if (existingAccess) {
-      await admin
-        .from("client_portal_access")
-        .update({ user_id: user.id, accepted_at: new Date().toISOString() })
-        .eq("client_id", client.id)
-        .eq("tenant_id", tenant.id);
-    } else {
-      await admin.from("client_portal_access").insert({
-        tenant_id: tenant.id,
-        client_id: client.id,
-        user_id: user.id,
-        accepted_at: new Date().toISOString(),
-      });
-    }
-
-    await admin.auth.admin.updateUserById(user.id, {
-      app_metadata: {
-        role: "client",
-        tenant_id: tenant.id,
-        tenant_slug: tenant.slug,
-      },
-    });
-    return NextResponse.redirect(tenantUrl(tenant.slug, "/portal"));
+    if (tenantSlug) return NextResponse.redirect(tenantUrl(tenantSlug, "/app/dashboard"));
+    return NextResponse.redirect(`${origin}/app/dashboard`);
   }
 
   // ── First-time admin OAuth sign-in ───────────────────────────────────────
@@ -194,5 +110,5 @@ export async function GET(request: NextRequest) {
     app_metadata: { role: "admin", tenant_id: tenantId, tenant_slug: slug },
   });
 
-  return NextResponse.redirect(tenantUrl(slug, "/dashboard"));
+  return NextResponse.redirect(tenantUrl(slug, "/app/dashboard"));
 }

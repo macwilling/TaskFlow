@@ -300,7 +300,7 @@ seedTest.describe("admin route guard", () => {
   });
 
   seedTest("client accessing /dashboard is redirected away from admin", async ({ page }) => {
-    await page.goto("/dashboard");
+    await page.goto("/app/dashboard");
     await expect(page).toHaveURL(/\/portal\/|\/auth\//, { timeout: 10_000 });
   });
 });

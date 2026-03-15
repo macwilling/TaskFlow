@@ -77,7 +77,7 @@ describe("updateBusinessInfoAction", () => {
       makeFormData({ business_name: "Acme", email: "hi@acme.com", country: "US" })
     );
     expect(result).toEqual({});
-    expect(revalidatePath).toHaveBeenCalledWith("/settings");
+    expect(revalidatePath).toHaveBeenCalledWith("/app/settings");
   });
 
   // Issue #30: update is scoped to tenant_id from session
@@ -109,7 +109,7 @@ describe("updateBrandingAction", () => {
       makeFormData({ primary_color: "#ff0000", accent_color: "#0000ff" })
     );
     expect(result).toEqual({});
-    expect(revalidatePath).toHaveBeenCalledWith("/settings");
+    expect(revalidatePath).toHaveBeenCalledWith("/app/settings");
   });
 });
 
@@ -193,7 +193,7 @@ describe("updateInvoiceSettingsAction", () => {
       })
     );
     expect(result).toEqual({});
-    expect(revalidatePath).toHaveBeenCalledWith("/settings");
+    expect(revalidatePath).toHaveBeenCalledWith("/app/settings");
     // tax rate stored as decimal
     expect(updateChain.update).toHaveBeenCalledWith(
       expect.objectContaining({ default_tax_rate: 0.1 })
@@ -228,7 +228,7 @@ describe("updateEmailTemplatesAction", () => {
       })
     );
     expect(result).toEqual({});
-    expect(revalidatePath).toHaveBeenCalledWith("/settings");
+    expect(revalidatePath).toHaveBeenCalledWith("/app/settings");
   });
 });
 
@@ -283,6 +283,6 @@ describe("updateTenantSlugAction", () => {
 
     const result = await updateTenantSlugAction(null, makeFormData({ slug: "new-slug" }));
     expect(result).toEqual({});
-    expect(revalidatePath).toHaveBeenCalledWith("/settings");
+    expect(revalidatePath).toHaveBeenCalledWith("/app/settings");
   });
 });

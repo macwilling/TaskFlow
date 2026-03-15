@@ -104,7 +104,7 @@ export function NewTaskForm({ clients, defaultClientId }: { clients: Client[]; d
       <div className="flex items-center gap-2 pt-2">
         <SubmitButton />
         <Button asChild variant="outline" size="sm" className="h-8 text-xs">
-          <Link href="/tasks">Cancel</Link>
+          <Link href="/app/tasks">Cancel</Link>
         </Button>
       </div>
     </form>

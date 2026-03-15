@@ -25,7 +25,7 @@ test.describe("unauthenticated access", () => {
   });
 
   test("visiting /dashboard redirects to /auth/login", async ({ page }) => {
-    await page.goto("/dashboard");
+    await page.goto("/app/dashboard");
     await baseExpect(page).toHaveURL(/\/auth\/login/, { timeout: 10_000 });
   });
 });
@@ -176,7 +176,7 @@ seedTest.describe("logout", () => {
     await expect(page).toHaveURL(/\/auth\/login/, { timeout: 10_000 });
 
     // Attempting to navigate back should redirect to login
-    await page.goto("/dashboard");
+    await page.goto("/app/dashboard");
     await expect(page).toHaveURL(/\/auth\/login/, { timeout: 10_000 });
   });
 });
