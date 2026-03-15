@@ -51,7 +51,33 @@ export async function GET(request: NextRequest) {
     .single();
 
   if (existingProfile) {
-    const tenantSlug = user.app_metadata?.tenant_slug as string | undefined;
+    let tenantSlug = user.app_metadata?.tenant_slug as string | undefined;
+
+    // Fallback: look up slug from DB for pre-SaaS-migration accounts missing
+    // tenant_slug in app_metadata, and backfill so subsequent sign-ins are fast.
+    if (!tenantSlug) {
+      const admin = createAdminClient();
+      const { data: profileWithTenant } = await admin
+        .from("profiles")
+        .select("tenant_id, tenants(slug)")
+        .eq("id", user.id)
+        .single();
+      const tenants = profileWithTenant?.tenants as
+        | { slug: string }
+        | { slug: string }[]
+        | null;
+      tenantSlug = Array.isArray(tenants) ? tenants[0]?.slug : tenants?.slug;
+      if (tenantSlug && profileWithTenant?.tenant_id) {
+        await admin.auth.admin.updateUserById(user.id, {
+          app_metadata: {
+            ...user.app_metadata,
+            tenant_id: profileWithTenant.tenant_id,
+            tenant_slug: tenantSlug,
+          },
+        });
+      }
+    }
+
     if (existingProfile.role === "client") {
       // A client user who hit the admin callback — send them to their portal
       if (tenantSlug) return NextResponse.redirect(tenantUrl(tenantSlug, "/portal"));
@@ -59,7 +85,7 @@ export async function GET(request: NextRequest) {
     }
     // Admin returning user
     if (tenantSlug) return NextResponse.redirect(tenantUrl(tenantSlug, "/app/dashboard"));
-    return NextResponse.redirect(`${origin}/app/dashboard`);
+    return NextResponse.redirect(`${origin}/auth/login?error=auth_callback_error`);
   }
 
   // ── First-time admin OAuth sign-in ───────────────────────────────────────
