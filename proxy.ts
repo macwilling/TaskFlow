@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 import { decodePayload, IMPERSONATION_COOKIE } from "@/lib/portal/impersonation";
+import { RESERVED_SLUGS } from "@/lib/reserved-slugs";
 
 const ADMIN_ROUTES = [
   "/app/dashboard",
@@ -79,10 +80,21 @@ export async function proxy(request: NextRequest) {
     return res;
   }
 
+  const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN ?? "";
+
+  // Reserved slug guard: redirect reserved subdomains back to root domain.
+  if (
+    tenantSlug &&
+    (RESERVED_SLUGS as readonly string[]).includes(tenantSlug) &&
+    !!baseDomain &&
+    baseDomain !== "localhost"
+  ) {
+    return NextResponse.redirect(`https://${baseDomain}`);
+  }
+
   // Root domain guard: on the bare base domain (prod only, not localhost),
   // allow only the landing page, auth routes, and API routes.
   // Anything else (e.g. /dashboard) redirects to login.
-  const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN ?? "";
   const isRootDomain =
     !!baseDomain &&
     baseDomain !== "localhost" &&
