@@ -16,9 +16,13 @@ export const createClient = cache(async () => {
           return cookieStore.getAll();
         },
         setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+          const cookieDomain = process.env.NEXT_PUBLIC_COOKIE_DOMAIN;
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
+              cookieStore.set(name, value, {
+                ...options,
+                ...(cookieDomain ? { domain: cookieDomain } : {}),
+              })
             );
           } catch {
             // Called from a Server Component — middleware handles session refresh.

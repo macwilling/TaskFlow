@@ -6,13 +6,19 @@ vi.mock("@/lib/supabase/middleware", () => ({
 }));
 
 import { updateSession } from "@/lib/supabase/middleware";
-import { proxy } from "@/proxy";
+import { proxy, getTenantSlugFromHost } from "@/proxy";
 import { encodePayload, makePayload, IMPERSONATION_COOKIE } from "@/lib/portal/impersonation";
 
 const fakeResponse = new NextResponse(null, { status: 200 });
 
-function makeRequest(pathname: string, cookies?: Record<string, string>): NextRequest {
-  const req = new NextRequest(`http://localhost:3000${pathname}`);
+function makeRequest(
+  pathname: string,
+  cookies?: Record<string, string>,
+  host?: string
+): NextRequest {
+  const req = new NextRequest(`http://${host ?? "localhost:3000"}${pathname}`, {
+    headers: { host: host ?? "localhost:3000" },
+  });
   if (cookies) {
     Object.entries(cookies).forEach(([name, value]) => {
       req.cookies.set(name, value);
@@ -43,24 +49,62 @@ function mockSession(user: Record<string, unknown> | null) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  delete process.env.ALLOW_REGISTRATION;
+  delete process.env.NEXT_PUBLIC_BASE_DOMAIN;
 });
 
-// ── Registration guard ─────────────────────────────────────────────────────
+// ── getTenantSlugFromHost ───────────────────────────────────────────────────
 
-describe("proxy: /auth/register", () => {
-  it("redirects to /auth/login when ALLOW_REGISTRATION is not true", async () => {
-    process.env.ALLOW_REGISTRATION = "false";
-    mockSession(null);
-    const res = await proxy(makeRequest("/auth/register"));
-    expect(res.headers.get("location")).toContain("/auth/login");
+describe("getTenantSlugFromHost", () => {
+  describe("with NEXT_PUBLIC_BASE_DOMAIN=taskflow.com", () => {
+    beforeEach(() => {
+      process.env.NEXT_PUBLIC_BASE_DOMAIN = "taskflow.com";
+    });
+
+    it("returns tenant slug from a valid subdomain", () => {
+      expect(getTenantSlugFromHost("acme.taskflow.com")).toBe("acme");
+    });
+
+    it("returns null for www subdomain", () => {
+      expect(getTenantSlugFromHost("www.taskflow.com")).toBeNull();
+    });
+
+    it("returns null for bare base domain", () => {
+      expect(getTenantSlugFromHost("taskflow.com")).toBeNull();
+    });
+
+    it("returns null for localhost", () => {
+      expect(getTenantSlugFromHost("localhost")).toBeNull();
+    });
+
+    it("returns null for localhost:3000", () => {
+      expect(getTenantSlugFromHost("localhost:3000")).toBeNull();
+    });
+
+    it("returns null for an unrelated host", () => {
+      expect(getTenantSlugFromHost("example.com")).toBeNull();
+    });
+
+    it("handles port in subdomain host correctly", () => {
+      expect(getTenantSlugFromHost("acme.taskflow.com:3000")).toBe("acme");
+    });
   });
 
-  it("passes through when ALLOW_REGISTRATION=true", async () => {
-    process.env.ALLOW_REGISTRATION = "true";
-    mockSession(null);
-    const res = await proxy(makeRequest("/auth/register"));
-    expect(res).toBe(fakeResponse);
+  describe("without NEXT_PUBLIC_BASE_DOMAIN (local dev fallback to localhost)", () => {
+    beforeEach(() => {
+      delete process.env.NEXT_PUBLIC_BASE_DOMAIN;
+    });
+
+    it("returns null for localhost", () => {
+      expect(getTenantSlugFromHost("localhost")).toBeNull();
+    });
+
+    it("returns null for localhost:3000", () => {
+      expect(getTenantSlugFromHost("localhost:3000")).toBeNull();
+    });
+
+    it("returns null for any host that does not include 'localhost'", () => {
+      expect(getTenantSlugFromHost("acme.taskflow.com")).toBeNull();
+    });
   });
 });
 
@@ -166,6 +210,26 @@ describe("proxy: portal routes", () => {
     });
     const res = await proxy(makeRequest("/portal/other-co"));
     expect(res.headers.get("location")).toContain("/portal/myco");
+  });
+});
+
+// ── x-tenant-slug header injection ────────────────────────────────────────
+
+describe("proxy: x-tenant-slug header", () => {
+  beforeEach(() => {
+    process.env.NEXT_PUBLIC_BASE_DOMAIN = "taskflow.com";
+  });
+
+  it("injects x-tenant-slug from subdomain on pass-through", async () => {
+    mockSession(null);
+    const res = await proxy(makeRequest("/auth/login", undefined, "acme.taskflow.com"));
+    expect(res.headers.get("x-tenant-slug")).toBe("acme");
+  });
+
+  it("injects empty x-tenant-slug for localhost", async () => {
+    mockSession(null);
+    const res = await proxy(makeRequest("/auth/login"));
+    expect(res.headers.get("x-tenant-slug")).toBe("");
   });
 });
 

@@ -13,6 +13,7 @@ export async function updateSession(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+          const cookieDomain = process.env.NEXT_PUBLIC_COOKIE_DOMAIN;
           // Set cookies on the request so server-side reads are consistent
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
@@ -20,7 +21,10 @@ export async function updateSession(request: NextRequest) {
           // Rebuild the response and set cookies on it for the browser
           supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options as Parameters<typeof supabaseResponse.cookies.set>[2])
+            supabaseResponse.cookies.set(name, value, {
+              ...(options as Parameters<typeof supabaseResponse.cookies.set>[2]),
+              ...(cookieDomain ? { domain: cookieDomain } : {}),
+            })
           );
         },
       },
