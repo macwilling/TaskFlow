@@ -14,8 +14,6 @@ function errorMessage(code: string | null): string | null {
   switch (code) {
     case "auth_callback_error":
       return "Authentication failed. Please try again.";
-    case "registration_disabled":
-      return "Account registration is not enabled.";
     default:
       return null;
   }
@@ -89,7 +87,7 @@ function LoginForm() {
     setLoading(true);
 
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
       setError(error.message);
@@ -97,8 +95,14 @@ function LoginForm() {
       return;
     }
 
-    router.push("/dashboard");
-    router.refresh();
+    const tenantSlug = data.user?.app_metadata?.tenant_slug as string | undefined;
+    const base = process.env.NEXT_PUBLIC_BASE_DOMAIN;
+    if (tenantSlug && base && base !== "localhost") {
+      window.location.href = `https://${tenantSlug}.${base}/dashboard`;
+    } else {
+      router.push("/dashboard");
+      router.refresh();
+    }
   }
 
   async function handleGoogleSignIn() {
@@ -269,14 +273,12 @@ export default function LoginPage() {
           <LoginForm />
         </Suspense>
 
-        {process.env.NEXT_PUBLIC_ALLOW_REGISTRATION === "true" && (
-          <p className="text-center text-sm text-muted-foreground">
-            Don&apos;t have an account?{" "}
-            <Link href="/auth/register" className="text-foreground hover:underline">
-              Create one
-            </Link>
-          </p>
-        )}
+        <p className="text-center text-sm text-muted-foreground">
+          Don&apos;t have an account?{" "}
+          <Link href="/auth/register" className="text-foreground hover:underline">
+            Create one
+          </Link>
+        </p>
       </div>
     </div>
   );

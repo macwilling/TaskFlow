@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -11,7 +10,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Zap } from "lucide-react";
 
 export default function RegisterPage() {
-  const router = useRouter();
   const [businessName, setBusinessName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -58,8 +56,12 @@ export default function RegisterPage() {
       return;
     }
 
-    router.push("/dashboard");
-    router.refresh();
+    const base = process.env.NEXT_PUBLIC_BASE_DOMAIN;
+    if (base && base !== "localhost") {
+      window.location.href = `https://${data.slug}.${base}/dashboard`;
+    } else {
+      window.location.href = `http://localhost:3000/dashboard`;
+    }
   }
 
   return (
