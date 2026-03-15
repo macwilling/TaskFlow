@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { createClient, getCachedUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -21,9 +22,10 @@ function formatDate(d: string | null) {
 export default async function PortalTaskPage({
   params,
 }: {
-  params: Promise<{ tenantSlug: string; taskId: string }>;
+  params: Promise<{ taskId: string }>;
 }) {
-  const { tenantSlug, taskId } = await params;
+  const [{ taskId }, requestHeaders] = await Promise.all([params, headers()]);
+  const tenantSlug = requestHeaders.get("x-tenant-slug") ?? "";
 
   const [user, supabase, impersonation] = await Promise.all([
     getCachedUser(),
@@ -77,7 +79,7 @@ export default async function PortalTaskPage({
       {/* Back link */}
       <div>
         <a
-          href={`/portal/${tenantSlug}`}
+          href="/portal"
           className="text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
           ← Back to tasks

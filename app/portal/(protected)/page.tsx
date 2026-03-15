@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import Link from "next/link";
 import { createClient, getCachedUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -14,12 +15,8 @@ function formatDate(d: string | null) {
   });
 }
 
-export default async function PortalDashboardPage({
-  params,
-}: {
-  params: Promise<{ tenantSlug: string }>;
-}) {
-  const { tenantSlug } = await params;
+export default async function PortalDashboardPage() {
+  const tenantSlug = (await headers()).get("x-tenant-slug") ?? "";
 
   const [user, supabase, impersonation] = await Promise.all([
     getCachedUser(),
@@ -78,7 +75,7 @@ export default async function PortalDashboardPage({
             View and track the tasks your consultant is working on.
           </p>
         </div>
-        {!isImpersonating && <PortalCreateTaskDialog tenantSlug={tenantSlug} />}
+        {!isImpersonating && <PortalCreateTaskDialog />}
       </div>
 
       {!tasks?.length ? (
@@ -92,7 +89,7 @@ export default async function PortalDashboardPage({
           {tasks.map((task) => (
             <Link
               key={task.id}
-              href={`/portal/${tenantSlug}/tasks/${task.id}`}
+              href={`/portal/tasks/${task.id}`}
               className="flex items-center gap-4 px-4 py-3 hover:bg-muted/40 transition-colors"
             >
               <div className="flex-1 min-w-0">

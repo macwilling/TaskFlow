@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient, getCachedUser } from "@/lib/supabase/server";
@@ -8,12 +9,10 @@ import { getImpersonationPayload } from "@/lib/portal/impersonation";
 
 export default async function PortalLayout({
   children,
-  params,
 }: {
   children: React.ReactNode;
-  params: Promise<{ tenantSlug: string }>;
 }) {
-  const { tenantSlug } = await params;
+  const tenantSlug = (await headers()).get("x-tenant-slug") ?? "";
 
   const admin = createAdminClient();
   // Tenant lookup, user fetch, and impersonation cookie can all resolve in parallel.
@@ -46,7 +45,7 @@ export default async function PortalLayout({
       user.app_metadata?.role !== "client" ||
       user.app_metadata?.tenant_id !== tenant.id
     ) {
-      redirect(`/portal/${tenantSlug}/login`);
+      redirect(`/portal/login`);
     }
 
     // Update last-seen timestamp for regular client sessions
@@ -73,20 +72,20 @@ export default async function PortalLayout({
             </span>
             <nav className="flex items-center gap-1">
               <Link
-                href={`/portal/${tenantSlug}`}
+                href="/portal"
                 className="text-sm px-2.5 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
               >
                 Tasks
               </Link>
               <Link
-                href={`/portal/${tenantSlug}/invoices`}
+                href="/portal/invoices"
                 className="text-sm px-2.5 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
               >
                 Invoices
               </Link>
             </nav>
           </div>
-          {!isImpersonating && <PortalSignOutButton tenantSlug={tenantSlug} />}
+          {!isImpersonating && <PortalSignOutButton />}
         </div>
       </header>
       <main className="mx-auto max-w-4xl px-6 py-8">{children}</main>

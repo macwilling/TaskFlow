@@ -1,6 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Resend } from "resend";
@@ -142,9 +143,8 @@ export async function sendPortalSignInLinkAction(
 // the PortalAuthCallbackClient calls this action to create the profile row
 // (first-time sign-in) or verify the existing one (returning user).
 
-export async function finalizePortalSessionAction(
-  tenantSlug: string
-): Promise<{ error?: string }> {
+export async function finalizePortalSessionAction(): Promise<{ error?: string }> {
+  const tenantSlug = (await headers()).get("x-tenant-slug") ?? "";
   const supabase = await createClient();
   const {
     data: { user },
@@ -266,7 +266,6 @@ export async function finalizePortalSessionAction(
  * tenantSlug is bound at call-site via .bind() so we can redirect back to the portal.
  */
 export async function createPortalTaskAction(
-  tenantSlug: string,
   _prev: { error?: string } | null,
   formData: FormData
 ): Promise<{ error?: string }> {
@@ -322,8 +321,8 @@ export async function createPortalTaskAction(
 
   if (error || !data) return { error: error?.message ?? "Failed to create task." };
 
-  revalidatePath(`/portal/${tenantSlug}`);
-  redirect(`/portal/${tenantSlug}/tasks/${data.id}`);
+  revalidatePath("/portal");
+  redirect(`/portal/tasks/${data.id}`);
 }
 
 export async function revokePortalAccessAction(
