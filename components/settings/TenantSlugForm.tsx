@@ -23,10 +23,15 @@ function SubmitButton() {
 
 export function TenantSlugForm({ slug }: Props) {
   const [state, formAction] = useActionState(updateTenantSlugAction, null);
-  const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN ?? "localhost:3000";
+  // Strip any accidental leading dot from the env var
+  const baseDomain = (process.env.NEXT_PUBLIC_BASE_DOMAIN ?? "localhost:3000").replace(/^\./, "");
+  const isLocal = baseDomain.startsWith("localhost");
+  const displaySlug = slug || "my-business";
+  const adminUrl = isLocal ? `http://${baseDomain}` : `https://${displaySlug}.${baseDomain}`;
+  const portalUrl = isLocal ? `http://${baseDomain}/portal` : `https://${displaySlug}.${baseDomain}/portal`;
 
   return (
-    <form action={formAction} className="space-y-4 max-w-md">
+    <form action={formAction} className="space-y-4">
       {state?.error && (
         <Alert variant="destructive">
           <AlertDescription>{state.error}</AlertDescription>
@@ -40,18 +45,18 @@ export function TenantSlugForm({ slug }: Props) {
 
       <div className="space-y-1.5">
         <Label htmlFor="slug">Subdomain slug</Label>
-        <div className="flex items-center gap-0">
-          <span className="inline-flex h-9 items-center rounded-l-md border border-r-0 border-border bg-muted px-3 text-sm text-muted-foreground font-mono">
+        <div className="flex items-center">
+          <span className="inline-flex h-9 items-center rounded-l-md border border-r-0 border-border bg-muted px-3 text-sm text-muted-foreground font-mono whitespace-nowrap">
             https://
           </span>
           <Input
             id="slug"
             name="slug"
             defaultValue={slug}
-            className="rounded-none font-mono"
+            className="rounded-none font-mono min-w-0 w-40"
             placeholder="my-business"
           />
-          <span className="inline-flex h-9 items-center rounded-r-md border border-l-0 border-border bg-muted px-3 text-sm text-muted-foreground font-mono">
+          <span className="inline-flex h-9 items-center rounded-r-md border border-l-0 border-border bg-muted px-3 text-sm text-muted-foreground font-mono whitespace-nowrap">
             .{baseDomain}
           </span>
         </div>
@@ -60,18 +65,18 @@ export function TenantSlugForm({ slug }: Props) {
         </p>
       </div>
 
-      <div className="rounded-md border border-border bg-muted/40 px-3 py-2 space-y-1 text-sm">
-        <div className="flex gap-2">
-          <span className="text-muted-foreground w-28 shrink-0">Admin app</span>
-          <span className="font-mono text-xs break-all">https://{slug || "my-business"}.{baseDomain}</span>
+      <div className="rounded-md border border-border bg-muted/40 px-3 py-2.5 space-y-1.5 text-sm">
+        <div className="flex gap-3">
+          <span className="text-muted-foreground w-24 shrink-0">Admin app</span>
+          <span className="font-mono text-xs">{adminUrl}</span>
         </div>
-        <div className="flex gap-2">
-          <span className="text-muted-foreground w-28 shrink-0">Client portal</span>
-          <span className="font-mono text-xs break-all">https://{slug || "my-business"}.{baseDomain}/portal</span>
+        <div className="flex gap-3">
+          <span className="text-muted-foreground w-24 shrink-0">Client portal</span>
+          <span className="font-mono text-xs">{portalUrl}</span>
         </div>
       </div>
 
-      <Alert variant="destructive" className="border-amber-500/50 bg-amber-50/50 text-amber-900 dark:bg-amber-950/30 dark:text-amber-200 [&>svg]:text-amber-500">
+      <Alert className="border-amber-500/50 bg-amber-50/50 text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
         <AlertDescription>
           Changing your slug changes your subdomain — update any portal links shared with clients.
         </AlertDescription>
