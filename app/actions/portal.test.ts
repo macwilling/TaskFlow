@@ -281,7 +281,7 @@ describe("revokePortalAccessAction", () => {
     expect(deleteProfileChain.delete).toHaveBeenCalled();
     expect(deleteAccessChain.delete).toHaveBeenCalled();
     expect(mockAdminAuthAdmin.deleteUser).toHaveBeenCalledWith("portal-user-1");
-    expect(revalidatePath).toHaveBeenCalledWith("/clients/c1");
+    expect(revalidatePath).toHaveBeenCalledWith("/app/clients/c1");
   });
 
   it("revokes access when client was invited but never signed up (user_id null)", async () => {
@@ -303,6 +303,6 @@ describe("revokePortalAccessAction", () => {
     // No profile delete or auth user delete when user_id is null
     expect(mockAdminAuthAdmin.deleteUser).not.toHaveBeenCalled();
     expect(deleteAccessChain.delete).toHaveBeenCalled();
-    expect(revalidatePath).toHaveBeenCalledWith("/clients/c1");
+    expect(revalidatePath).toHaveBeenCalledWith("/app/clients/c1");
   });
 });

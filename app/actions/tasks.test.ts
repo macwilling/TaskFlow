@@ -117,8 +117,8 @@ describe("createTaskAction", () => {
 
     await createTaskAction(null, makeFormData());
 
-    expect(revalidatePath).toHaveBeenCalledWith("/tasks");
-    expect(redirect).toHaveBeenCalledWith("/tasks/ACME-1");
+    expect(revalidatePath).toHaveBeenCalledWith("/app/tasks");
+    expect(redirect).toHaveBeenCalledWith("/app/tasks/ACME-1");
   });
 
   // Issue #30: tenant_id must come from profile
@@ -178,8 +178,8 @@ describe("updateTaskMetaAction", () => {
 
     const result = await updateTaskMetaAction("task-1", null, makeFormData());
     expect(result).toEqual({});
-    expect(revalidatePath).toHaveBeenCalledWith("/tasks/AC-3");
-    expect(revalidatePath).toHaveBeenCalledWith("/tasks");
+    expect(revalidatePath).toHaveBeenCalledWith("/app/tasks/AC-3");
+    expect(revalidatePath).toHaveBeenCalledWith("/app/tasks");
   });
 });
 
@@ -219,8 +219,8 @@ describe("closeTaskAction", () => {
 
     const result = await closeTaskAction("task-1", "fixed it");
     expect(result).toEqual({});
-    expect(revalidatePath).toHaveBeenCalledWith("/tasks/AC-1");
-    expect(revalidatePath).toHaveBeenCalledWith("/tasks");
+    expect(revalidatePath).toHaveBeenCalledWith("/app/tasks/AC-1");
+    expect(revalidatePath).toHaveBeenCalledWith("/app/tasks");
   });
 });
 
@@ -298,7 +298,7 @@ describe("deleteTaskAction", () => {
 
     await deleteTaskAction("task-1");
 
-    expect(revalidatePath).toHaveBeenCalledWith("/tasks");
-    expect(redirect).toHaveBeenCalledWith("/tasks");
+    expect(revalidatePath).toHaveBeenCalledWith("/app/tasks");
+    expect(redirect).toHaveBeenCalledWith("/app/tasks");
   });
 });

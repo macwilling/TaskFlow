@@ -18,15 +18,15 @@ import {
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/clients", label: "Clients", icon: Users },
-  { href: "/tasks", label: "Tasks", icon: CheckSquare },
-  { href: "/time", label: "Time", icon: Clock },
-  { href: "/invoices", label: "Invoices", icon: FileText },
-  { href: "/portal-users", label: "Portal Users", icon: Globe },
-  { href: "/reports", label: "Reports", icon: BarChart2 },
-  { href: "/settings", label: "Settings", icon: Settings },
-  { href: "/email-log", label: "Email Log", icon: Mail },
+  { href: "/app/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/app/clients", label: "Clients", icon: Users },
+  { href: "/app/tasks", label: "Tasks", icon: CheckSquare },
+  { href: "/app/time", label: "Time", icon: Clock },
+  { href: "/app/invoices", label: "Invoices", icon: FileText },
+  { href: "/app/portal-users", label: "Portal Users", icon: Globe },
+  { href: "/app/reports", label: "Reports", icon: BarChart2 },
+  { href: "/app/settings", label: "Settings", icon: Settings },
+  { href: "/app/email-log", label: "Email Log", icon: Mail },
 ];
 
 export function Sidebar() {

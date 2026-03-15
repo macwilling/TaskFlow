@@ -28,7 +28,7 @@ export default async function InvoicesPage() {
         title="Invoices"
         actions={
           <Button asChild size="sm" className="h-7 gap-1 text-xs">
-            <Link href="/invoices/new">
+            <Link href="/app/invoices/new">
               <Plus className="h-3.5 w-3.5" />
               New invoice
             </Link>

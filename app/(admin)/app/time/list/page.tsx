@@ -61,7 +61,7 @@ export default async function TimeListPage({
         title="Time"
         actions={
           <Button asChild variant="outline" size="sm" className="h-7 gap-1 text-xs">
-            <Link href="/time">
+            <Link href="/app/time">
               <CalendarDays className="h-3.5 w-3.5" />
               Calendar view
             </Link>

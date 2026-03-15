@@ -21,7 +21,7 @@ export default async function TasksPage() {
         title="Tasks"
         actions={
           <Button asChild size="sm" className="h-7 gap-1 text-xs">
-            <Link href="/tasks/new">
+            <Link href="/app/tasks/new">
               <Plus className="h-3.5 w-3.5" />
               New task
             </Link>

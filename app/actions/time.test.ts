@@ -94,7 +94,7 @@ describe("createTimeEntryAction", () => {
 
     const result = await createTimeEntryAction(baseInput);
     expect(result).toEqual({ id: "entry-1" });
-    expect(revalidatePath).toHaveBeenCalledWith("/time");
+    expect(revalidatePath).toHaveBeenCalledWith("/app/time");
   });
 
   it("also revalidates task path when task_id provided", async () => {
@@ -115,7 +115,7 @@ describe("createTimeEntryAction", () => {
 
     await createTimeEntryAction({ ...baseInput, task_id: "task-1" });
 
-    expect(revalidatePath).toHaveBeenCalledWith("/tasks/AC-5");
+    expect(revalidatePath).toHaveBeenCalledWith("/app/tasks/AC-5");
   });
 
   // Issue #30: tenant_id comes from profile
@@ -167,7 +167,7 @@ describe("updateTimeEntryAction", () => {
 
     const result = await updateTimeEntryAction("entry-1", baseInput);
     expect(result).toEqual({});
-    expect(revalidatePath).toHaveBeenCalledWith("/time");
+    expect(revalidatePath).toHaveBeenCalledWith("/app/time");
   });
 });
 
@@ -188,7 +188,7 @@ describe("updateTimeEntryDateAction", () => {
 
     const result = await updateTimeEntryDateAction("entry-1", "2026-03-10");
     expect(result).toEqual({});
-    expect(revalidatePath).toHaveBeenCalledWith("/time");
+    expect(revalidatePath).toHaveBeenCalledWith("/app/time");
   });
 
   it("returns DB error on update failure", async () => {
@@ -221,7 +221,7 @@ describe("deleteTimeEntryAction", () => {
 
     const result = await deleteTimeEntryAction("entry-1");
     expect(result).toEqual({});
-    expect(revalidatePath).toHaveBeenCalledWith("/time");
+    expect(revalidatePath).toHaveBeenCalledWith("/app/time");
   });
 
   it("also revalidates task when taskId provided", async () => {
@@ -235,6 +235,6 @@ describe("deleteTimeEntryAction", () => {
     );
 
     await deleteTimeEntryAction("entry-1", "task-2");
-    expect(revalidatePath).toHaveBeenCalledWith("/tasks/BC-2");
+    expect(revalidatePath).toHaveBeenCalledWith("/app/tasks/BC-2");
   });
 });

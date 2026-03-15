@@ -90,7 +90,7 @@ export async function createTaskAction(
       ? `${c.client_key}-${data.task_number}`
       : data.id;
 
-  revalidatePath("/tasks");
+  revalidatePath("/app/tasks");
   redirect(`/tasks/${slug}`);
 }
 
@@ -121,7 +121,7 @@ export async function updateTaskTitleAction(
 
   const slug = await getTaskSlug(supabase, taskId);
   revalidatePath(`/tasks/${slug}`);
-  revalidatePath("/tasks");
+  revalidatePath("/app/tasks");
   return {};
 }
 
@@ -164,7 +164,7 @@ export async function updateTaskMetaAction(
 
   const slug = await getTaskSlug(supabase, taskId);
   revalidatePath(`/tasks/${slug}`);
-  revalidatePath("/tasks");
+  revalidatePath("/app/tasks");
   return {};
 }
 
@@ -227,7 +227,7 @@ export async function updateTaskStatusAction(
 
   const slug = await getTaskSlug(supabase, taskId);
   revalidatePath(`/tasks/${slug}`);
-  revalidatePath("/tasks");
+  revalidatePath("/app/tasks");
   return {};
 }
 
@@ -271,7 +271,7 @@ export async function closeTaskAction(
 
   const slug = await getTaskSlug(supabase, taskId);
   revalidatePath(`/tasks/${slug}`);
-  revalidatePath("/tasks");
+  revalidatePath("/app/tasks");
   return {};
 }
 
@@ -291,8 +291,8 @@ export async function deleteTaskAction(taskId: string): Promise<{ error?: string
 
   if (error) return { error: error.message };
 
-  revalidatePath("/tasks");
-  redirect("/tasks");
+  revalidatePath("/app/tasks");
+  redirect("/app/tasks");
 }
 
 // ─── Save attachment record (called after successful R2 upload) ───────────────

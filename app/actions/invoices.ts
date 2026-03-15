@@ -132,7 +132,7 @@ export async function createInvoiceAction(
 
   if (itemsError) return { error: itemsError.message };
 
-  revalidatePath("/invoices");
+  revalidatePath("/app/invoices");
   redirect(`/invoices/${invoice.id}`);
 }
 
@@ -224,7 +224,7 @@ export async function updateInvoiceAction(
 
   if (itemsError) return { error: itemsError.message };
 
-  revalidatePath("/invoices");
+  revalidatePath("/app/invoices");
   revalidatePath(`/invoices/${invoiceId}`);
   redirect(`/invoices/${invoiceId}`);
 }
@@ -285,7 +285,7 @@ export async function sendInvoiceAction(invoiceId: string): Promise<{ error?: st
     // Email failure should not block the send action
   }
 
-  revalidatePath("/invoices");
+  revalidatePath("/app/invoices");
   revalidatePath(`/invoices/${invoiceId}`);
   return {};
 }
@@ -357,7 +357,7 @@ export async function recordPaymentAction(
     })
     .eq("id", invoiceId);
 
-  revalidatePath("/invoices");
+  revalidatePath("/app/invoices");
   revalidatePath(`/invoices/${invoiceId}`);
   return {};
 }
@@ -382,8 +382,8 @@ export async function deleteInvoiceAction(invoiceId: string): Promise<void> {
 
   await supabase.from("invoices").delete().eq("id", invoiceId);
 
-  revalidatePath("/invoices");
-  redirect("/invoices");
+  revalidatePath("/app/invoices");
+  redirect("/app/invoices");
 }
 
 // ─── Delete payment ───────────────────────────────────────────────────────────
@@ -429,7 +429,7 @@ export async function deletePaymentAction(
     })
     .eq("id", invoiceId);
 
-  revalidatePath("/invoices");
+  revalidatePath("/app/invoices");
   revalidatePath(`/invoices/${invoiceId}`);
   return {};
 }

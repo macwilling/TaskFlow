@@ -57,7 +57,7 @@ describe("GET /auth/callback", () => {
 
   // ── Returning users ──────────────────────────────────────────────────────
 
-  it("redirects admin returning user to /dashboard", async () => {
+  it("redirects admin returning user to /app/dashboard", async () => {
     mockSupabaseClient.auth.exchangeCodeForSession.mockResolvedValueOnce({ error: null });
     mockSupabaseClient.auth.getUser.mockResolvedValueOnce({
       data: { user: { id: "u1", app_metadata: { role: "admin" } } },
@@ -69,7 +69,7 @@ describe("GET /auth/callback", () => {
     );
 
     const res = await GET(makeRequest({ code: "ok-code" }));
-    expect(res.headers.get("location")).toContain("/dashboard");
+    expect(res.headers.get("location")).toContain("/app/dashboard");
   });
 
   it("redirects returning client to their portal", async () => {
@@ -240,7 +240,7 @@ describe("GET /auth/callback", () => {
     mockAdminAuthAdmin.updateUserById.mockResolvedValueOnce({ error: null });
 
     const res = await GET(makeRequest({ code: "ok-code" }));
-    expect(res.headers.get("location")).toContain("/dashboard");
+    expect(res.headers.get("location")).toContain("/app/dashboard");
     expect(mockAdminAuthAdmin.updateUserById).toHaveBeenCalledWith(
       "new-admin",
       expect.objectContaining({

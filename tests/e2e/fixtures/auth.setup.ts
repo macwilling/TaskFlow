@@ -23,7 +23,7 @@ setup("admin storageState grants dashboard access", async ({ page }, testInfo) =
     }
   }
 
-  await page.goto("/dashboard");
+  await page.goto("/app/dashboard");
   // If the session is valid, middleware allows through; otherwise redirects to /auth/login
   await expect(page).not.toHaveURL(/auth\/login/, { timeout: 10_000 });
 });

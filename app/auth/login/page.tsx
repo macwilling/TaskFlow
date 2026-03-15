@@ -98,9 +98,9 @@ function LoginForm() {
     const tenantSlug = data.user?.app_metadata?.tenant_slug as string | undefined;
     const base = process.env.NEXT_PUBLIC_BASE_DOMAIN;
     if (tenantSlug && base && base !== "localhost") {
-      window.location.href = `https://${tenantSlug}.${base}/dashboard`;
+      window.location.href = `https://${tenantSlug}.${base}/app/dashboard`;
     } else {
-      router.push("/dashboard");
+      router.push("/app/dashboard");
       router.refresh();
     }
   }

@@ -97,7 +97,7 @@ export default async function TimePage() {
         title="Time"
         actions={
           <Button asChild variant="outline" size="sm" className="h-7 gap-1 text-xs">
-            <Link href="/time/list">
+            <Link href="/app/time/list">
               <List className="h-3.5 w-3.5" />
               List view
             </Link>

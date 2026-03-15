@@ -40,11 +40,11 @@ function makeRequest(clientId?: string) {
 }
 
 describe("GET /api/portal/impersonate", () => {
-  it("redirects to /dashboard if no clientId", async () => {
+  it("redirects to /app/dashboard if no clientId", async () => {
     // Route exits before calling getCachedUser when clientId is absent
     const res = await GET(makeRequest());
     expect(res.status).toBe(307);
-    expect(res.headers.get("location")).toContain("/dashboard");
+    expect(res.headers.get("location")).toContain("/app/dashboard");
   });
 
   it("redirects to /auth/login if no user", async () => {
@@ -71,7 +71,7 @@ describe("GET /api/portal/impersonate", () => {
 
     const res = await GET(makeRequest("c1"));
     expect(res.status).toBe(307);
-    expect(res.headers.get("location")).toContain("/clients/c1");
+    expect(res.headers.get("location")).toContain("/app/clients/c1");
   });
 
   it("sets impersonation cookie and redirects to portal on success", async () => {
