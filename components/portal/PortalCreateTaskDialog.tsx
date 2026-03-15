@@ -36,9 +36,8 @@ function SubmitButton() {
   );
 }
 
-export function PortalCreateTaskDialog({ tenantSlug }: { tenantSlug: string }) {
-  const action = createPortalTaskAction.bind(null, tenantSlug);
-  const [state, formAction] = useActionState(action, null);
+export function PortalCreateTaskDialog() {
+  const [state, formAction] = useActionState(createPortalTaskAction, null);
   const formRef = useRef<HTMLFormElement>(null);
   const [open, setOpen] = useState(false);
   const [description, setDescription] = useState("");

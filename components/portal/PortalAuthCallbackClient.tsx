@@ -17,7 +17,7 @@ import { finalizePortalSessionAction } from "@/app/actions/portal";
  * the @supabase/ssr cookie adapter, then call a server action to finish account
  * setup (profile, portal_access, app_metadata).
  */
-export function PortalAuthCallbackClient({ tenantSlug }: { tenantSlug: string }) {
+export function PortalAuthCallbackClient() {
   const router = useRouter();
   const handled = useRef(false);
 
@@ -40,16 +40,16 @@ export function PortalAuthCallbackClient({ tenantSlug }: { tenantSlug: string })
         if (handled.current) return;
         handled.current = true;
         if (session) {
-          const result = await finalizePortalSessionAction(tenantSlug);
+          const result = await finalizePortalSessionAction();
           if (result?.error === "not_invited") {
-            router.replace(`/portal/${tenantSlug}/login?error=not_invited`);
+            router.replace("/portal/login?error=not_invited");
           } else if (result?.error) {
-            router.replace(`/portal/${tenantSlug}/login?error=auth_callback_error`);
+            router.replace("/portal/login?error=auth_callback_error");
           } else {
-            router.replace(`/portal/${tenantSlug}`);
+            router.replace("/portal");
           }
         } else {
-          router.replace(`/portal/${tenantSlug}/login?error=auth_callback_error`);
+          router.replace("/portal/login?error=auth_callback_error");
         }
       });
       return;
@@ -65,21 +65,21 @@ export function PortalAuthCallbackClient({ tenantSlug }: { tenantSlug: string })
         handled.current = true;
 
         if (error || !data.session) {
-          router.replace(`/portal/${tenantSlug}/login?error=auth_callback_error`);
+          router.replace("/portal/login?error=auth_callback_error");
           return;
         }
 
         // Cookies are now set — call the server action to finish setup.
-        const result = await finalizePortalSessionAction(tenantSlug);
+        const result = await finalizePortalSessionAction();
         if (result?.error === "not_invited") {
-          router.replace(`/portal/${tenantSlug}/login?error=not_invited`);
+          router.replace("/portal/login?error=not_invited");
         } else if (result?.error) {
-          router.replace(`/portal/${tenantSlug}/login?error=auth_callback_error`);
+          router.replace("/portal/login?error=auth_callback_error");
         } else {
-          router.replace(`/portal/${tenantSlug}`);
+          router.replace("/portal");
         }
       });
-  }, [tenantSlug, router]);
+  }, [router]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">

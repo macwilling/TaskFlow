@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { createClient, getCachedUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getImpersonationPayload } from "@/lib/portal/impersonation";
@@ -40,12 +41,8 @@ function invoiceDisplayStatus(invoice: { status: string; due_date: string | null
   return invoice.status as "sent" | "viewed";
 }
 
-export default async function PortalInvoicesPage({
-  params,
-}: {
-  params: Promise<{ tenantSlug: string }>;
-}) {
-  const { tenantSlug } = await params;
+export default async function PortalInvoicesPage() {
+  const tenantSlug = (await headers()).get("x-tenant-slug") ?? "";
 
   const [user, supabase, impersonation] = await Promise.all([
     getCachedUser(),

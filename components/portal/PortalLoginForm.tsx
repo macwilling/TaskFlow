@@ -42,10 +42,8 @@ function GoogleIcon() {
 }
 
 export function PortalLoginForm({
-  tenantSlug,
   initialError,
 }: {
-  tenantSlug: string;
   initialError?: string;
 }) {
   const [email, setEmail] = useState("");
@@ -64,7 +62,7 @@ export function PortalLoginForm({
     const { error: otpError } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=/portal/${tenantSlug}`,
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     });
     if (otpError) {
@@ -82,7 +80,7 @@ export function PortalLoginForm({
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=/portal/${tenantSlug}`,
+        redirectTo: `${window.location.origin}/auth/callback`,
       },
     });
     if (oauthError) {

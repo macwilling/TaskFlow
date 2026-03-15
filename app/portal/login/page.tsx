@@ -1,14 +1,14 @@
+import { headers } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PortalLoginForm } from "@/components/portal/PortalLoginForm";
 
 export default async function PortalLoginPage({
-  params,
   searchParams,
 }: {
-  params: Promise<{ tenantSlug: string }>;
   searchParams: Promise<{ error?: string }>;
 }) {
-  const [{ tenantSlug }, { error }] = await Promise.all([params, searchParams]);
+  const [{ error }, requestHeaders] = await Promise.all([searchParams, headers()]);
+  const tenantSlug = requestHeaders.get("x-tenant-slug") ?? "";
 
   const admin = createAdminClient();
   const { data: tenant } = await admin
@@ -36,7 +36,7 @@ export default async function PortalLoginPage({
             Sign in to your client portal
           </p>
         </div>
-        <PortalLoginForm tenantSlug={tenantSlug} initialError={error} />
+        <PortalLoginForm initialError={error} />
       </div>
     </div>
   );

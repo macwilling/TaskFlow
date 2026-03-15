@@ -84,9 +84,8 @@ export async function proxy(request: NextRequest) {
     }
     if (user.app_metadata?.role !== "admin") {
       // Authenticated client users should land on their portal, not the login page
-      const userTenantSlug = user.app_metadata?.tenant_slug as string | undefined;
-      if (userTenantSlug) {
-        return NextResponse.redirect(new URL(`/portal/${userTenantSlug}`, request.url));
+      if (user.app_metadata?.tenant_slug) {
+        return NextResponse.redirect(new URL("/portal", request.url));
       }
       return NextResponse.redirect(new URL("/auth/login", request.url));
     }
@@ -100,7 +99,7 @@ export async function proxy(request: NextRequest) {
 
     if (!user) {
       return NextResponse.redirect(
-        new URL(`/portal/${urlSlug}/login`, request.url)
+        new URL("/portal/login", request.url)
       );
     }
 
@@ -110,20 +109,20 @@ export async function proxy(request: NextRequest) {
         return withTenantHeader(supabaseResponse);
       }
       return NextResponse.redirect(
-        new URL(`/portal/${urlSlug}/login`, request.url)
+        new URL("/portal/login", request.url)
       );
     }
 
     if (user.app_metadata?.role !== "client") {
       return NextResponse.redirect(
-        new URL(`/portal/${urlSlug}/login`, request.url)
+        new URL("/portal/login", request.url)
       );
     }
 
     // Redirect client to their own tenant if they navigate to another
     const userSlug = user.app_metadata?.tenant_slug as string | undefined;
     if (userSlug && userSlug !== urlSlug) {
-      return NextResponse.redirect(new URL(`/portal/${userSlug}`, request.url));
+      return NextResponse.redirect(new URL("/portal", request.url));
     }
     return withTenantHeader(supabaseResponse);
   }
