@@ -29,6 +29,23 @@ function isPortalProtectedRoute(pathname: string): boolean {
   );
 }
 
+/**
+ * Extracts the tenant slug from the Host header.
+ * Returns null for localhost, www, or the bare base domain.
+ * Example: "acme.taskflow.com" → "acme"
+ */
+export function getTenantSlugFromHost(host: string): string | null {
+  const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN ?? "localhost";
+  // Strip port (e.g. "acme.taskflow.com:3000" → "acme.taskflow.com")
+  const hostWithoutPort = host.split(":")[0];
+  if (!hostWithoutPort.includes(baseDomain)) return null;
+  // Bare base domain — no subdomain present
+  if (hostWithoutPort === baseDomain) return null;
+  const subdomain = hostWithoutPort.split(".")[0];
+  if (!subdomain || subdomain === "www") return null;
+  return subdomain;
+}
+
 /** Returns true if the request carries a valid (non-expired) impersonation cookie for the given slug. */
 function hasValidImpersonationCookie(request: NextRequest, urlSlug: string): boolean {
   const raw = request.cookies.get(IMPERSONATION_COOKIE)?.value;
@@ -40,15 +57,24 @@ function hasValidImpersonationCookie(request: NextRequest, urlSlug: string): boo
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Always refresh the session
-  const { supabaseResponse, user } = await updateSession(request);
+  // Extract tenant slug from subdomain
+  const host = request.headers.get("host") ?? "";
+  const tenantSlug = getTenantSlugFromHost(host);
 
-  // Registration guard — only allow if ALLOW_REGISTRATION=true
-  if (pathname === "/auth/register") {
-    if (process.env.ALLOW_REGISTRATION !== "true") {
-      return NextResponse.redirect(new URL("/auth/login", request.url));
-    }
-    return supabaseResponse;
+  // Inject x-tenant-slug header into every request so downstream Server
+  // Components and Route Handlers can read it without re-parsing the host.
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-tenant-slug", tenantSlug ?? "");
+
+  // Always refresh the session (pass mutated headers along)
+  const { supabaseResponse, user } = await updateSession(
+    new NextRequest(request.url, { headers: requestHeaders, method: request.method, body: request.body })
+  );
+
+  // Helper: clone supabaseResponse but carry our custom request headers forward
+  function withTenantHeader(res: NextResponse): NextResponse {
+    res.headers.set("x-tenant-slug", tenantSlug ?? "");
+    return res;
   }
 
   // Admin route guard
@@ -58,18 +84,19 @@ export async function proxy(request: NextRequest) {
     }
     if (user.app_metadata?.role !== "admin") {
       // Authenticated client users should land on their portal, not the login page
-      const tenantSlug = user.app_metadata?.tenant_slug as string | undefined;
-      if (tenantSlug) {
-        return NextResponse.redirect(new URL(`/portal/${tenantSlug}`, request.url));
+      const userTenantSlug = user.app_metadata?.tenant_slug as string | undefined;
+      if (userTenantSlug) {
+        return NextResponse.redirect(new URL(`/portal/${userTenantSlug}`, request.url));
       }
       return NextResponse.redirect(new URL("/auth/login", request.url));
     }
-    return supabaseResponse;
+    return withTenantHeader(supabaseResponse);
   }
 
   // Portal route guard
   if (isPortalProtectedRoute(pathname)) {
-    const urlSlug = pathname.split("/")[2] ?? "";
+    // Prefer subdomain-based slug; fall back to URL path for local dev
+    const urlSlug = tenantSlug ?? pathname.split("/")[2] ?? "";
 
     if (!user) {
       return NextResponse.redirect(
@@ -80,7 +107,7 @@ export async function proxy(request: NextRequest) {
     // Admin impersonation: allow admins through if they have a valid cookie for this tenant
     if (user.app_metadata?.role === "admin") {
       if (hasValidImpersonationCookie(request, urlSlug)) {
-        return supabaseResponse;
+        return withTenantHeader(supabaseResponse);
       }
       return NextResponse.redirect(
         new URL(`/portal/${urlSlug}/login`, request.url)
@@ -98,10 +125,10 @@ export async function proxy(request: NextRequest) {
     if (userSlug && userSlug !== urlSlug) {
       return NextResponse.redirect(new URL(`/portal/${userSlug}`, request.url));
     }
-    return supabaseResponse;
+    return withTenantHeader(supabaseResponse);
   }
 
-  return supabaseResponse;
+  return withTenantHeader(supabaseResponse);
 }
 
 export const config = {
