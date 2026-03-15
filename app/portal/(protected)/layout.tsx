@@ -22,7 +22,7 @@ export default async function PortalLayout({
     getImpersonationPayload(),
   ]);
 
-  if (!tenant) redirect("/auth/login?error=auth_callback_error");
+  if (!tenant) redirect("/");
 
   const { data: settings } = await admin
     .from("tenant_settings")

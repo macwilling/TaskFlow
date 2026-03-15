@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PortalLoginForm } from "@/components/portal/PortalLoginForm";
 
@@ -15,17 +16,17 @@ export default async function PortalLoginPage({
     .from("tenants")
     .select("id")
     .eq("slug", tenantSlug)
+    .maybeSingle();
+
+  if (!tenant) redirect("/");
+
+  const { data: settings } = await admin
+    .from("tenant_settings")
+    .select("business_name")
+    .eq("tenant_id", tenant.id)
     .single();
 
-  let businessName = tenantSlug;
-  if (tenant) {
-    const { data: settings } = await admin
-      .from("tenant_settings")
-      .select("business_name")
-      .eq("tenant_id", tenant.id)
-      .single();
-    if (settings?.business_name) businessName = settings.business_name;
-  }
+  const businessName = settings?.business_name ?? tenantSlug;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
