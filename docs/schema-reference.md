@@ -14,14 +14,16 @@ Quick reference for all tables, columns, and relationships. See `supabase/migrat
 | `20260303000003_time_entries.sql` | time_entries |
 | _(Phase 5)_ `20260303000004_invoices.sql` | invoices, invoice_line_items, payments; FK from time_entries.invoice_id |
 | _(Phase 6)_ `20260303000005_client_portal.sql` | client_portal_access; client-side RLS on tasks/comments |
+| `20260303000013_saas_infrastructure.sql` | tenants.custom_domain; tenant_settings SMTP columns |
 
 ---
 
 ## tenants
 ```
-id          UUID PK
-slug        TEXT UNIQUE   ← URL-safe, auto-generated from business name, editable in settings
-created_at  TIMESTAMPTZ
+id             UUID PK
+slug           TEXT UNIQUE   ← URL-safe, auto-generated from business name, editable in settings
+custom_domain  TEXT UNIQUE   ← future bring-your-own-domain (e.g. portal.theirbiz.com); nullable
+created_at     TIMESTAMPTZ
 ```
 RLS: service role only (no direct client access).
 
@@ -54,6 +56,12 @@ email_comment_subject/body     TEXT
 email_signature          TEXT
 email_sender_name        TEXT
 email_reply_to           TEXT
+smtp_host                TEXT   ← nullable; when set, used instead of shared Resend
+smtp_port                INTEGER
+smtp_username            TEXT
+smtp_password            TEXT   ← store encrypted (pgcrypto/Vault planned)
+smtp_from_email          TEXT   ← e.g. hello@theircustom.com
+smtp_from_name           TEXT   ← e.g. "Acme Co"
 created_at, updated_at   TIMESTAMPTZ
 ```
 RLS: admin full CRUD (own tenant). Portal gets limited read (business_name, logo_url, primary_color, portal_welcome_message) via query projection.
