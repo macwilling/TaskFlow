@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getTenantSlugFromHost } from "@/proxy";
 
 function generateSlug(name: string): string {
   return (
@@ -14,10 +15,15 @@ function generateSlug(name: string): string {
   );
 }
 
+function tenantUrl(slug: string, path: string): string {
+  const base = process.env.NEXT_PUBLIC_BASE_DOMAIN ?? "localhost";
+  if (base === "localhost") return `http://localhost:3000${path}`;
+  return `https://${slug}.${base}${path}`;
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/dashboard";
 
   if (!code) {
     return NextResponse.redirect(`${origin}/auth/login?error=auth_callback_error`);
@@ -38,6 +44,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/auth/login?error=auth_callback_error`);
   }
 
+  // Detect portal vs admin callback via subdomain
+  const host = request.headers.get("host") ?? "";
+  const subdomain = getTenantSlugFromHost(host);
+  const isPortalCallback = !!subdomain;
+
   // Check whether this user already has a profile (returning user)
   const { data: existingProfile } = await supabase
     .from("profiles")
@@ -46,23 +57,21 @@ export async function GET(request: NextRequest) {
     .single();
 
   if (existingProfile) {
-    // Returning user — redirect based on role
+    const tenantSlug = user.app_metadata?.tenant_slug as string | undefined;
     if (existingProfile.role === "client") {
-      const tenantSlug = user.app_metadata?.tenant_slug as string | undefined;
-      if (tenantSlug) return NextResponse.redirect(`${origin}/portal/${tenantSlug}`);
+      if (tenantSlug) return NextResponse.redirect(tenantUrl(tenantSlug, "/portal"));
       return NextResponse.redirect(`${origin}/auth/login?error=auth_callback_error`);
     }
-    return NextResponse.redirect(`${origin}${next}`);
+    // Admin returning user
+    if (tenantSlug) return NextResponse.redirect(tenantUrl(tenantSlug, "/dashboard"));
+    return NextResponse.redirect(`${origin}/dashboard`);
   }
 
   // ── Portal first-time sign-in (OTP magic link OR Google OAuth) ──────────
-  // No profile + next is a portal URL.
+  // No profile + callback arrived on a tenant subdomain.
   // Match the user's email to an existing clients record to authorize access.
-  // If the admin already granted access (pending row exists), update it.
-  // Otherwise insert a new access row (backwards-compat for Google OAuth
-  // users who weren't pre-invited).
-  if (next.startsWith("/portal/")) {
-    const portalSlug = next.split("/")[2];
+  if (isPortalCallback) {
+    const portalSlug = subdomain;
     const admin = createAdminClient();
 
     const { data: tenant } = await admin
@@ -73,7 +82,7 @@ export async function GET(request: NextRequest) {
     if (!tenant) {
       await supabase.auth.signOut();
       return NextResponse.redirect(
-        `${origin}/portal/${portalSlug}/login?error=auth_callback_error`
+        `${origin}/portal/login?error=auth_callback_error`
       );
     }
 
@@ -86,7 +95,7 @@ export async function GET(request: NextRequest) {
     if (!client) {
       await supabase.auth.signOut();
       return NextResponse.redirect(
-        `${origin}/portal/${portalSlug}/login?error=not_invited`
+        `${origin}/portal/login?error=not_invited`
       );
     }
 
@@ -134,18 +143,12 @@ export async function GET(request: NextRequest) {
         tenant_slug: tenant.slug,
       },
     });
-    return NextResponse.redirect(`${origin}/portal/${tenant.slug}`);
+    return NextResponse.redirect(tenantUrl(tenant.slug, "/portal"));
   }
 
-  // ── First-time OAuth sign-in ──────────────────────────────────────────────
-  // No profile means this is a brand-new user (e.g. Google OAuth first login).
-  // Create a tenant + profile + settings, then set app_metadata.
-
-  if (process.env.ALLOW_REGISTRATION !== "true") {
-    await supabase.auth.signOut();
-    return NextResponse.redirect(`${origin}/auth/login?error=registration_disabled`);
-  }
-
+  // ── First-time admin OAuth sign-in ───────────────────────────────────────
+  // No profile + callback on root domain → new admin user via Google OAuth.
+  // Create a tenant + profile + settings, then redirect to tenant subdomain.
   const admin = createAdminClient();
   const displayName =
     user.user_metadata?.full_name ??
@@ -191,5 +194,5 @@ export async function GET(request: NextRequest) {
     app_metadata: { role: "admin", tenant_id: tenantId, tenant_slug: slug },
   });
 
-  return NextResponse.redirect(`${origin}${next}`);
+  return NextResponse.redirect(tenantUrl(slug, "/dashboard"));
 }

@@ -14,10 +14,6 @@ function generateSlug(businessName: string): string {
 }
 
 export async function POST(request: NextRequest) {
-  if (process.env.ALLOW_REGISTRATION !== "true") {
-    return NextResponse.json({ error: "Registration is disabled." }, { status: 403 });
-  }
-
   const { businessName, email, password } = await request.json();
 
   if (!businessName || !email || !password) {
@@ -93,7 +89,7 @@ export async function POST(request: NextRequest) {
 
     if (metaError) throw new Error(metaError.message);
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, slug });
   } catch (err) {
     // Clean up the auth user if anything downstream failed
     await admin.auth.admin.deleteUser(userId);
