@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCachedUser } from "@/lib/supabase/server";
 import { TopBar } from "@/components/layout/TopBar";
-import { SettingsNav } from "@/components/settings/SettingsNav";
+import { PageContainer } from "@/components/layout/PageContainer";
 
 export default async function SettingsLayout({
   children,
@@ -14,10 +14,7 @@ export default async function SettingsLayout({
   return (
     <>
       <TopBar title="Settings" />
-      <div className="flex flex-1 min-h-0">
-        <SettingsNav />
-        <div className="flex-1 min-w-0 p-6">{children}</div>
-      </div>
+      <PageContainer>{children}</PageContainer>
     </>
   );
 }
