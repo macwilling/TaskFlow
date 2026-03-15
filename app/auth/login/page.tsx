@@ -251,7 +251,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm space-y-6">
         <div className="flex items-center gap-2">
           <Zap className="h-5 w-5 text-primary" strokeWidth={2.5} />
-          <span className="text-sm font-semibold">TaskFlow</span>
+          <span className="text-sm font-semibold">BillableDesk</span>
         </div>
 
         <div className="space-y-1">
