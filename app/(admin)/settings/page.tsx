@@ -43,8 +43,6 @@ export default async function SettingsPage() {
     );
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
-
   return (
     <>
       <TopBar title="Settings" description="Manage your account and workspace preferences." />
@@ -101,7 +99,7 @@ export default async function SettingsPage() {
             <p className="text-sm text-muted-foreground mt-0.5 mb-4">
               The URL your clients use to access their portal.
             </p>
-            <TenantSlugForm slug={tenant?.slug ?? ""} appUrl={appUrl} />
+            <TenantSlugForm slug={tenant?.slug ?? ""} />
           </section>
 
         </div>

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { tenantUrl } from "@/lib/url";
 import { Resend } from "resend";
 
 function escapeHtml(str: string): string {
@@ -82,12 +83,11 @@ export async function sendPortalSignInLinkAction(
   }
 
   // Generate magic link without sending Supabase's default email
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
   const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
     type: "magiclink",
     email: client.email,
     options: {
-      redirectTo: `${appUrl}/portal/${tenant.slug}/auth-callback`,
+      redirectTo: tenantUrl(tenant.slug, "/auth/callback"),
     },
   });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
