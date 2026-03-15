@@ -77,6 +77,27 @@ export async function proxy(request: NextRequest) {
     return res;
   }
 
+  // Root domain guard: on the bare base domain (prod only, not localhost),
+  // allow only the landing page, auth routes, and API routes.
+  // Anything else (e.g. /dashboard) redirects to login.
+  const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN ?? "";
+  const isRootDomain =
+    !!baseDomain &&
+    baseDomain !== "localhost" &&
+    !tenantSlug &&
+    host.split(":")[0] === baseDomain;
+
+  if (isRootDomain) {
+    const isPublicPath =
+      pathname === "/" ||
+      pathname.startsWith("/auth/") ||
+      pathname.startsWith("/api/");
+    if (!isPublicPath) {
+      return NextResponse.redirect(new URL("/auth/login", request.url));
+    }
+    return withTenantHeader(supabaseResponse);
+  }
+
   // Admin route guard
   if (isAdminRoute(pathname)) {
     if (!user) {
