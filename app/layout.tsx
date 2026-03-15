@@ -4,7 +4,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "TaskFlow",
+  title: "BillableDesk",
   description: "Consulting business management platform",
 };
 

@@ -48,7 +48,7 @@ export function Sidebar() {
       {/* Logo */}
       <div className="flex h-14 items-center gap-2 border-b border-border px-4">
         <Zap className="h-5 w-5 text-primary" strokeWidth={2.5} />
-        <span className="text-sm font-semibold tracking-tight">TaskFlow</span>
+        <span className="text-sm font-semibold tracking-tight">BillableDesk</span>
       </div>
 
       {/* Primary nav */}

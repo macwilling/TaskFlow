@@ -75,13 +75,13 @@ function MarketingPage() {
             consulting business.
           </span>
           <br />
-          <span className="text-muted-foreground/70">Not your billing admin.</span>
+          <span className="text-muted-foreground/70">Not your back office.</span>
         </h1>
 
         {/* Subtext */}
         <p className="mt-6 max-w-lg text-base text-muted-foreground leading-relaxed">
-          Time tracking, invoicing, and client portals — all in one place. Your
-          workspace lives at{" "}
+          Time tracking, invoicing, and client portals — all connected. Your
+          workspace is at{" "}
           <span className="inline-flex items-center gap-1 rounded-md border border-border/80 bg-muted/60 px-1.5 py-0.5 font-mono text-xs text-foreground">
             <Lock className="h-2.5 w-2.5 shrink-0 text-muted-foreground" />
             you.billabledesk.com
@@ -98,7 +98,7 @@ function MarketingPage() {
             href="/auth/login"
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            Already have an account
+            Already have an account?
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
@@ -109,19 +109,19 @@ function MarketingPage() {
             {
               Icon: Clock,
               title: "Time tracking",
-              desc: "Log hours by client and task with a calendar view. Export to invoice in one click.",
+              desc: "Log hours against any client or task with a calendar view. Convert tracked time to an invoice in one click.",
               color: "text-blue-400",
             },
             {
               Icon: FileText,
               title: "PDF invoices",
-              desc: "Generate professional invoices from tracked time. Send, track status, and download.",
+              desc: "Generate polished PDF invoices from tracked time. Send them, see when they're viewed, and mark them paid.",
               color: "text-emerald-400",
             },
             {
               Icon: Users,
               title: "Client portal",
-              desc: "Clients get their own workspace to view tasks, leave comments, and download invoices.",
+              desc: "Give clients their own portal to review tasks, leave comments, and download invoices.",
               color: "text-violet-400",
             },
           ].map(({ Icon, title, desc, color }) => (
@@ -175,7 +175,7 @@ function WorkspaceAvailablePage({
               is available
             </h1>
             <p className="text-sm text-muted-foreground">
-              This workspace hasn&apos;t been claimed yet. Be the first.
+              This workspace hasn&apos;t been claimed yet. Register to make it yours.
             </p>
           </div>
           <div className="flex flex-col items-center gap-3">
@@ -225,7 +225,7 @@ function WorkspaceLandingPage({
               Welcome to {businessName}
             </h1>
             <p className="text-sm text-muted-foreground">
-              Log in to access your client workspace.
+              Log in to access your workspace.
             </p>
           </div>
           <Button asChild size="lg" className="w-full">
