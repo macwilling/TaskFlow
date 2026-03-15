@@ -23,8 +23,7 @@ function SubmitButton() {
 
 export function TenantSlugForm({ slug }: Props) {
   const [state, formAction] = useActionState(updateTenantSlugAction, null);
-  // Strip any accidental leading dot from the env var
-  const baseDomain = (process.env.NEXT_PUBLIC_BASE_DOMAIN ?? "localhost:3000").replace(/^\./, "");
+  const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN ?? "localhost:3000";
   const isLocal = baseDomain.startsWith("localhost");
   const displaySlug = slug || "my-business";
   const adminUrl = isLocal ? `http://${baseDomain}` : `https://${displaySlug}.${baseDomain}`;
