@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -44,7 +44,6 @@ function GoogleIcon() {
 }
 
 function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   const [email, setEmail] = useState("");
@@ -87,7 +86,7 @@ function LoginForm() {
     setLoading(true);
 
     const supabase = createClient();
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
       setError(error.message);
@@ -95,14 +94,7 @@ function LoginForm() {
       return;
     }
 
-    const tenantSlug = data.user?.app_metadata?.tenant_slug as string | undefined;
-    const base = process.env.NEXT_PUBLIC_BASE_DOMAIN;
-    if (tenantSlug && base && base !== "localhost") {
-      window.location.href = `https://${tenantSlug}.${base}/app/dashboard`;
-    } else {
-      router.push("/app/dashboard");
-      router.refresh();
-    }
+    window.location.href = "/api/auth/session-redirect";
   }
 
   async function handleGoogleSignIn() {
