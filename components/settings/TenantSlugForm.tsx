@@ -10,7 +10,6 @@ import { updateTenantSlugAction } from "@/app/actions/settings";
 
 interface Props {
   slug: string;
-  appUrl: string;
 }
 
 function SubmitButton() {
@@ -22,7 +21,9 @@ function SubmitButton() {
   );
 }
 
-export function TenantSlugForm({ slug, appUrl }: Props) {
+export function TenantSlugForm({ slug }: Props) {
+  const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN;
+  const isSubdomain = baseDomain && !baseDomain.startsWith("localhost");
   const [state, formAction] = useActionState(updateTenantSlugAction, null);
 
   return (
@@ -41,16 +42,36 @@ export function TenantSlugForm({ slug, appUrl }: Props) {
       <div className="space-y-1.5">
         <Label htmlFor="slug">Portal URL slug</Label>
         <div className="flex items-center gap-0">
-          <span className="inline-flex h-9 items-center rounded-l-md border border-r-0 border-border bg-muted px-3 text-sm text-muted-foreground">
-            {appUrl}/portal/
-          </span>
-          <Input
-            id="slug"
-            name="slug"
-            defaultValue={slug}
-            className="rounded-l-none font-mono"
-            placeholder="my-business"
-          />
+          {isSubdomain ? (
+            <>
+              <span className="inline-flex h-9 items-center rounded-l-md border border-r-0 border-border bg-muted px-3 text-sm text-muted-foreground">
+                https://
+              </span>
+              <Input
+                id="slug"
+                name="slug"
+                defaultValue={slug}
+                className="rounded-none font-mono"
+                placeholder="my-business"
+              />
+              <span className="inline-flex h-9 items-center rounded-r-md border border-l-0 border-border bg-muted px-3 text-sm text-muted-foreground">
+                .{baseDomain}/portal
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="inline-flex h-9 items-center rounded-l-md border border-r-0 border-border bg-muted px-3 text-sm text-muted-foreground">
+                http://localhost:3000/portal/
+              </span>
+              <Input
+                id="slug"
+                name="slug"
+                defaultValue={slug}
+                className="rounded-l-none font-mono"
+                placeholder="my-business"
+              />
+            </>
+          )}
         </div>
         <p className="text-xs text-muted-foreground">
           Lowercase letters, numbers, and hyphens only.

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { portalUrl } from "@/lib/url";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -51,9 +52,7 @@ export async function POST(request: NextRequest) {
   }
 
   const tenant = client.tenants;
-  const portalLink = tenant
-    ? `${process.env.NEXT_PUBLIC_APP_URL}/portal/${tenant.slug}`
-    : null;
+  const portalLink = tenant ? portalUrl(tenant.slug) : null;
 
   const subject = `Your task has been completed: ${task.title}`;
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { tenantUrl } from "@/lib/url";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -73,12 +74,11 @@ export async function POST(request: NextRequest) {
   const businessName = ((settings as any)?.business_name as string | null) ?? "Your consultant";
 
   // Generate magic link
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
   const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
     type: "magiclink",
     email: client.email,
     options: {
-      redirectTo: `${appUrl}/auth/callback?next=/portal/${tenant.slug}`,
+      redirectTo: tenantUrl(tenant.slug, "/auth/callback"),
     },
   });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
