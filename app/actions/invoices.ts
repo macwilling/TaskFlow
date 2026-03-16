@@ -132,8 +132,8 @@ export async function createInvoiceAction(
 
   if (itemsError) return { error: itemsError.message };
 
-  revalidatePath("/app/invoices");
-  redirect(`/invoices/${invoice.id}`);
+  revalidatePath("/app/finance/invoices");
+  redirect(`/app/finance/invoices/${invoice.id}`);
 }
 
 // ─── Update (draft only) ──────────────────────────────────────────────────────
@@ -224,9 +224,9 @@ export async function updateInvoiceAction(
 
   if (itemsError) return { error: itemsError.message };
 
-  revalidatePath("/app/invoices");
-  revalidatePath(`/invoices/${invoiceId}`);
-  redirect(`/invoices/${invoiceId}`);
+  revalidatePath("/app/finance/invoices");
+  revalidatePath(`/app/finance/invoices/${invoiceId}`);
+  redirect(`/app/finance/invoices/${invoiceId}`);
 }
 
 // ─── Send ─────────────────────────────────────────────────────────────────────
@@ -285,8 +285,8 @@ export async function sendInvoiceAction(invoiceId: string): Promise<{ error?: st
     // Email failure should not block the send action
   }
 
-  revalidatePath("/app/invoices");
-  revalidatePath(`/invoices/${invoiceId}`);
+  revalidatePath("/app/finance/invoices");
+  revalidatePath(`/app/finance/invoices/${invoiceId}`);
   return {};
 }
 
@@ -357,8 +357,8 @@ export async function recordPaymentAction(
     })
     .eq("id", invoiceId);
 
-  revalidatePath("/app/invoices");
-  revalidatePath(`/invoices/${invoiceId}`);
+  revalidatePath("/app/finance/invoices");
+  revalidatePath(`/app/finance/invoices/${invoiceId}`);
   return {};
 }
 
@@ -382,8 +382,8 @@ export async function deleteInvoiceAction(invoiceId: string): Promise<void> {
 
   await supabase.from("invoices").delete().eq("id", invoiceId);
 
-  revalidatePath("/app/invoices");
-  redirect("/app/invoices");
+  revalidatePath("/app/finance/invoices");
+  redirect("/app/finance/invoices");
 }
 
 // ─── Delete payment ───────────────────────────────────────────────────────────
@@ -429,7 +429,7 @@ export async function deletePaymentAction(
     })
     .eq("id", invoiceId);
 
-  revalidatePath("/app/invoices");
-  revalidatePath(`/invoices/${invoiceId}`);
+  revalidatePath("/app/finance/invoices");
+  revalidatePath(`/app/finance/invoices/${invoiceId}`);
   return {};
 }
