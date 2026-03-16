@@ -72,6 +72,11 @@ function tsAgo(n: number): string {
   return new Date(today.getTime() - n * 86400000).toISOString();
 }
 
+/** Returns a TIME string like "09:00:00" for use in the start_time column. */
+function t(hour: number, minute = 0): string {
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00`;
+}
+
 // ── Error helper ─────────────────────────────────────────────────────────────
 
 function assertOk<T>(result: { data: T; error: unknown }, label: string): NonNullable<T> {
@@ -802,6 +807,7 @@ async function seed() {
     task_id: string;
     description: string;
     entry_date: string;
+    start_time: string;
     duration_hours: number;
     hourly_rate: number;
     billable: boolean;
@@ -811,79 +817,120 @@ async function seed() {
 
   const timeEntryRows: TimeEntry[] = [
     // ── CCC T1: Volunteer page view (6.5h) → INV-1001 ──
-    { client_id: ccc, task_id: ccc1, description: "Scoping call and page view design — mapped volunteer fields, group type hierarchy, and background check status columns", entry_date: daysAgo(42), duration_hours: 2.5, hourly_rate: 175, billable: true, billed: true, invoice_id: i1001 },
-    { client_id: ccc, task_id: ccc1, description: "Built custom SQL view and MP page configuration — volunteer management view with ministry filter and group type drill-down", entry_date: daysAgo(41), duration_hours: 2.5, hourly_rate: 175, billable: true, billed: true, invoice_id: i1001 },
-    { client_id: ccc, task_id: ccc1, description: "Testing and QA with volunteer coordinator, added CSV export action and last-service-date sort default", entry_date: daysAgo(40), duration_hours: 1.5, hourly_rate: 175, billable: true, billed: true, invoice_id: i1001 },
+    // daysAgo(42): 09:00–11:30 (other entries that day fill 13:00+)
+    { client_id: ccc, task_id: ccc1, description: "Scoping call and page view design — mapped volunteer fields, group type hierarchy, and background check status columns", entry_date: daysAgo(42), start_time: t(9),     duration_hours: 2.5, hourly_rate: 175, billable: true, billed: true, invoice_id: i1001 },
+    // daysAgo(41): 09:00–11:30
+    { client_id: ccc, task_id: ccc1, description: "Built custom SQL view and MP page configuration — volunteer management view with ministry filter and group type drill-down",          entry_date: daysAgo(41), start_time: t(9),     duration_hours: 2.5, hourly_rate: 175, billable: true, billed: true, invoice_id: i1001 },
+    // daysAgo(40): 14:00–15:30
+    { client_id: ccc, task_id: ccc1, description: "Testing and QA with volunteer coordinator, added CSV export action and last-service-date sort default",                               entry_date: daysAgo(40), start_time: t(14),    duration_hours: 1.5, hourly_rate: 175, billable: true, billed: true, invoice_id: i1001 },
 
     // ── CCC T2: Recurring giving config (3.5h) → INV-1001 ──
-    { client_id: ccc, task_id: ccc2, description: "Configured recurring giving schedules (weekly/bi-weekly/monthly), program and fund code mapping, Stripe webhook endpoint setup", entry_date: daysAgo(38), duration_hours: 2.0, hourly_rate: 175, billable: true, billed: true, invoice_id: i1001 },
-    { client_id: ccc, task_id: ccc2, description: "Sandbox transaction testing across all schedule types, verified fund allocation accuracy, documented process for admin team", entry_date: daysAgo(37), duration_hours: 1.5, hourly_rate: 175, billable: true, billed: true, invoice_id: i1001 },
+    // daysAgo(38): 09:30–11:30
+    { client_id: ccc, task_id: ccc2, description: "Configured recurring giving schedules (weekly/bi-weekly/monthly), program and fund code mapping, Stripe webhook endpoint setup",      entry_date: daysAgo(38), start_time: t(9, 30), duration_hours: 2.0, hourly_rate: 175, billable: true, billed: true, invoice_id: i1001 },
+    // daysAgo(37): 09:00–10:30
+    { client_id: ccc, task_id: ccc2, description: "Sandbox transaction testing across all schedule types, verified fund allocation accuracy, documented process for admin team",          entry_date: daysAgo(37), start_time: t(9),     duration_hours: 1.5, hourly_rate: 175, billable: true, billed: true, invoice_id: i1001 },
 
     // ── CCC T3: Households fix (2h) → INV-1006 ──
-    { client_id: ccc, task_id: ccc3, description: "Diagnosed phone number search failure — traced to JOIN condition change in HouseholdView SQL view introduced in MP v5.4", entry_date: daysAgo(27), duration_hours: 1.0, hourly_rate: 175, billable: true, billed: true, invoice_id: i1006 },
-    { client_id: ccc, task_id: ccc3, description: "Applied fix, tested all search modes (name / email / phone / address), confirmed with church IT, closed ticket", entry_date: daysAgo(26), duration_hours: 1.0, hourly_rate: 175, billable: true, billed: true, invoice_id: i1006 },
+    // daysAgo(27): 10:00–11:00
+    { client_id: ccc, task_id: ccc3, description: "Diagnosed phone number search failure — traced to JOIN condition change in HouseholdView SQL view introduced in MP v5.4",             entry_date: daysAgo(27), start_time: t(10),    duration_hours: 1.0, hourly_rate: 175, billable: true, billed: true, invoice_id: i1006 },
+    // daysAgo(26): 11:00–12:00
+    { client_id: ccc, task_id: ccc3, description: "Applied fix, tested all search modes (name / email / phone / address), confirmed with church IT, closed ticket",                     entry_date: daysAgo(26), start_time: t(11),    duration_hours: 1.0, hourly_rate: 175, billable: true, billed: true, invoice_id: i1006 },
 
     // ── CCC T4: Annual report (2.5h) → UNBILLED ──
-    { client_id: ccc, task_id: ccc4, description: "Discovery session with operations team — defined report sections, data sources (attendance, giving, volunteers, groups), and fiscal year parameter", entry_date: daysAgo(5), duration_hours: 1.5, hourly_rate: 175, billable: true, billed: false },
-    { client_id: ccc, task_id: ccc4, description: "Built report skeleton with attendance trend and giving summary sections, parameterized by year, placeholder for volunteer hours", entry_date: daysAgo(3), duration_hours: 1.0, hourly_rate: 175, billable: true, billed: false },
+    // daysAgo(5): 09:00–10:30 (GFC T3 #2 at 11:00, HSC T4 #2 at 13:00, NGC T3 #1 at 15:30)
+    { client_id: ccc, task_id: ccc4, description: "Discovery session with operations team — defined report sections, data sources (attendance, giving, volunteers, groups), and fiscal year parameter", entry_date: daysAgo(5), start_time: t(9),  duration_hours: 1.5, hourly_rate: 175, billable: true, billed: false },
+    // daysAgo(3): 10:00–11:00 (NGC T3 #3 at 13:00)
+    { client_id: ccc, task_id: ccc4, description: "Built report skeleton with attendance trend and giving summary sections, parameterized by year, placeholder for volunteer hours",     entry_date: daysAgo(3),  start_time: t(10),    duration_hours: 1.0, hourly_rate: 175, billable: true, billed: false },
 
     // ── GFC T1: Attendance report (5h) → INV-1002 ──
-    { client_id: gfc, task_id: gfc1, description: "Requirements gathering with campus pastors — metrics, 5-campus structure, distribution list, Monday 7am delivery schedule", entry_date: daysAgo(43), duration_hours: 1.5, hourly_rate: 165, billable: true, billed: true, invoice_id: i1002 },
-    { client_id: gfc, task_id: gfc1, description: "Built multi-campus attendance report with YoY comparison columns, first-time visitor counts, and % change calculation", entry_date: daysAgo(42), duration_hours: 2.5, hourly_rate: 165, billable: true, billed: true, invoice_id: i1002 },
-    { client_id: gfc, task_id: gfc1, description: "Configured MP scheduled report distribution (Mon 7am, campus pastors + senior pastor), ran test delivery to confirm receipt", entry_date: daysAgo(41), duration_hours: 1.0, hourly_rate: 165, billable: true, billed: true, invoice_id: i1002 },
+    // daysAgo(43): 09:00–10:30 (HSC T1 #2 at 13:00)
+    { client_id: gfc, task_id: gfc1, description: "Requirements gathering with campus pastors — metrics, 5-campus structure, distribution list, Monday 7am delivery schedule",           entry_date: daysAgo(43), start_time: t(9),     duration_hours: 1.5, hourly_rate: 165, billable: true, billed: true, invoice_id: i1002 },
+    // daysAgo(42): 13:00–15:30 (CCC T1 #1 at 09:00, HSC T1 #3 at 15:30 — back-to-back is ok)
+    { client_id: gfc, task_id: gfc1, description: "Built multi-campus attendance report with YoY comparison columns, first-time visitor counts, and % change calculation",              entry_date: daysAgo(42), start_time: t(13),    duration_hours: 2.5, hourly_rate: 165, billable: true, billed: true, invoice_id: i1002 },
+    // daysAgo(41): 13:30–14:30 (CCC T1 #2 at 09:00)
+    { client_id: gfc, task_id: gfc1, description: "Configured MP scheduled report distribution (Mon 7am, campus pastors + senior pastor), ran test delivery to confirm receipt",        entry_date: daysAgo(41), start_time: t(13, 30),duration_hours: 1.0, hourly_rate: 165, billable: true, billed: true, invoice_id: i1002 },
 
     // ── GFC T2: Donor insights (7.5h) → INV-1002 ──
-    { client_id: gfc, task_id: gfc2, description: "Configured Record Insights dashboard — LYBUNT/SYBUNT segments, giving trends by fund, lapsed donor filter (12mo+ no gift)", entry_date: daysAgo(37), duration_hours: 3.0, hourly_rate: 165, billable: true, billed: true, invoice_id: i1002 },
-    { client_id: gfc, task_id: gfc2, description: "Added average gift size by donor segment, 12-month trend sparklines, and read-only shared view for Exec Pastor (aggregated data only)", entry_date: daysAgo(36), duration_hours: 3.0, hourly_rate: 165, billable: true, billed: true, invoice_id: i1002 },
-    { client_id: gfc, task_id: gfc2, description: "Testing with development team, access control verification, configuration documentation for future updates", entry_date: daysAgo(35), duration_hours: 1.5, hourly_rate: 165, billable: true, billed: true, invoice_id: i1002 },
+    // daysAgo(37): 13:00–16:00 (CCC T2 #2 at 09:00)
+    { client_id: gfc, task_id: gfc2, description: "Configured Record Insights dashboard — LYBUNT/SYBUNT segments, giving trends by fund, lapsed donor filter (12mo+ no gift)",         entry_date: daysAgo(37), start_time: t(13),    duration_hours: 3.0, hourly_rate: 165, billable: true, billed: true, invoice_id: i1002 },
+    // daysAgo(36): 09:30–12:30
+    { client_id: gfc, task_id: gfc2, description: "Added average gift size by donor segment, 12-month trend sparklines, and read-only shared view for Exec Pastor (aggregated data only)", entry_date: daysAgo(36), start_time: t(9, 30), duration_hours: 3.0, hourly_rate: 165, billable: true, billed: true, invoice_id: i1002 },
+    // daysAgo(35): 09:00–10:30 (HSC T2 at 13:00)
+    { client_id: gfc, task_id: gfc2, description: "Testing with development team, access control verification, configuration documentation for future updates",                          entry_date: daysAgo(35), start_time: t(9),     duration_hours: 1.5, hourly_rate: 165, billable: true, billed: true, invoice_id: i1002 },
 
     // ── GFC T3: Giving reconciliation (3.5h) → UNBILLED ──
-    { client_id: gfc, task_id: gfc3, description: "Designed reconciliation logic — Pushpay API pull, MP contribution match by amount + date + contact ID, exception flagging rules", entry_date: daysAgo(7), duration_hours: 2.0, hourly_rate: 165, billable: true, billed: false },
-    { client_id: gfc, task_id: gfc3, description: "Built exception flagging, tested against 2 weeks of historical data — found 3 unmatched weekend recurring gifts, adding catch-up logic", entry_date: daysAgo(5), duration_hours: 1.5, hourly_rate: 165, billable: true, billed: false },
+    // daysAgo(7): 09:00–11:00
+    { client_id: gfc, task_id: gfc3, description: "Designed reconciliation logic — Pushpay API pull, MP contribution match by amount + date + contact ID, exception flagging rules",   entry_date: daysAgo(7),  start_time: t(9),     duration_hours: 2.0, hourly_rate: 165, billable: true, billed: false },
+    // daysAgo(5): 11:00–12:30 (CCC T4 #1 at 09:00, HSC T4 #2 at 13:00, NGC T3 #1 at 15:30)
+    { client_id: gfc, task_id: gfc3, description: "Built exception flagging, tested against 2 weeks of historical data — found 3 unmatched weekend recurring gifts, adding catch-up logic", entry_date: daysAgo(5), start_time: t(11), duration_hours: 1.5, hourly_rate: 165, billable: true, billed: false },
 
     // ── GFC T4: SMS workflow (2h) → UNBILLED ──
-    { client_id: gfc, task_id: gfc4, description: "Built SMS follow-up workflow — trigger on First Time Guest status, 48hr delay, personalized message with campus pastor name and response link", entry_date: daysAgo(2), duration_hours: 2.0, hourly_rate: 165, billable: true, billed: false },
+    // daysAgo(2): 09:00–11:00
+    { client_id: gfc, task_id: gfc4, description: "Built SMS follow-up workflow — trigger on First Time Guest status, 48hr delay, personalized message with campus pastor name and response link", entry_date: daysAgo(2), start_time: t(9), duration_hours: 2.0, hourly_rate: 165, billable: true, billed: false },
 
     // ── HSC T1: New member automation (8h) → INV-1003 ──
-    { client_id: hsc, task_id: hsc1, description: "Designed 4-step automation workflow — trigger conditions, delay windows, message templates, and dynamic field insertion strategy", entry_date: daysAgo(44), duration_hours: 2.0, hourly_rate: 175, billable: true, billed: true, invoice_id: i1003 },
-    { client_id: hsc, task_id: hsc1, description: "Built steps 1 and 2 (welcome email + Group Life text) in MP workflow builder, configured delay timers and template variables", entry_date: daysAgo(43), duration_hours: 3.0, hourly_rate: 175, billable: true, billed: true, invoice_id: i1003 },
-    { client_id: hsc, task_id: hsc1, description: "Built steps 3 and 4 (volunteer interest + call reminder), end-to-end testing with 5 sample new member records", entry_date: daysAgo(42), duration_hours: 3.0, hourly_rate: 175, billable: true, billed: true, invoice_id: i1003 },
+    // daysAgo(44): 09:00–11:00
+    { client_id: hsc, task_id: hsc1, description: "Designed 4-step automation workflow — trigger conditions, delay windows, message templates, and dynamic field insertion strategy",    entry_date: daysAgo(44), start_time: t(9),     duration_hours: 2.0, hourly_rate: 175, billable: true, billed: true, invoice_id: i1003 },
+    // daysAgo(43): 13:00–16:00 (GFC T1 #1 at 09:00)
+    { client_id: hsc, task_id: hsc1, description: "Built steps 1 and 2 (welcome email + Group Life text) in MP workflow builder, configured delay timers and template variables",       entry_date: daysAgo(43), start_time: t(13),    duration_hours: 3.0, hourly_rate: 175, billable: true, billed: true, invoice_id: i1003 },
+    // daysAgo(42): 15:30–18:30 (CCC T1 #1 at 09:00, GFC T1 #2 at 13:00)
+    { client_id: hsc, task_id: hsc1, description: "Built steps 3 and 4 (volunteer interest + call reminder), end-to-end testing with 5 sample new member records",                     entry_date: daysAgo(42), start_time: t(15, 30),duration_hours: 3.0, hourly_rate: 175, billable: true, billed: true, invoice_id: i1003 },
 
     // ── HSC T2: Group life training (3h) → INV-1003 ──
-    { client_id: hsc, task_id: hsc2, description: "Delivered 3-hour Group Life module training via Zoom (6 attendees) — group types, enrollment, attendance, health reports, Group Finder. Session recorded.", entry_date: daysAgo(35), duration_hours: 3.0, hourly_rate: 175, billable: true, billed: true, invoice_id: i1003 },
+    // daysAgo(35): 13:00–16:00 (GFC T2 #3 at 09:00)
+    { client_id: hsc, task_id: hsc2, description: "Delivered 3-hour Group Life module training via Zoom (6 attendees) — group types, enrollment, attendance, health reports, Group Finder. Session recorded.", entry_date: daysAgo(35), start_time: t(13), duration_hours: 3.0, hourly_rate: 175, billable: true, billed: true, invoice_id: i1003 },
 
     // ── HSC T3: Missions page view (1.5h) → UNBILLED ──
-    { client_id: hsc, task_id: hsc3, description: "Scoping call with missions director — defined field requirements for participant registration, deposit tracking, and passport/medical form status", entry_date: daysAgo(8), duration_hours: 1.5, hourly_rate: 175, billable: true, billed: false },
+    // daysAgo(8): 10:00–11:30
+    { client_id: hsc, task_id: hsc3, description: "Scoping call with missions director — defined field requirements for participant registration, deposit tracking, and passport/medical form status", entry_date: daysAgo(8), start_time: t(10), duration_hours: 1.5, hourly_rate: 175, billable: true, billed: false },
 
     // ── HSC T4: Small groups roster export (4h) → UNBILLED ──
-    { client_id: hsc, task_id: hsc4, description: "Built group roster export — member contact info, attendance %, optional prayer request section, group leader header, meeting details footer", entry_date: daysAgo(6), duration_hours: 2.0, hourly_rate: 175, billable: true, billed: false },
-    { client_id: hsc, task_id: hsc4, description: "Added PDF formatting, per-leader prayer request toggle, group meeting time/location in footer per Jennifer's review feedback", entry_date: daysAgo(5), duration_hours: 2.0, hourly_rate: 175, billable: true, billed: false },
+    // daysAgo(6): 09:30–11:30
+    { client_id: hsc, task_id: hsc4, description: "Built group roster export — member contact info, attendance %, optional prayer request section, group leader header, meeting details footer", entry_date: daysAgo(6), start_time: t(9, 30), duration_hours: 2.0, hourly_rate: 175, billable: true, billed: false },
+    // daysAgo(5): 13:00–15:00 (CCC T4 #1 at 09:00, GFC T3 #2 at 11:00, NGC T3 #1 at 15:30)
+    { client_id: hsc, task_id: hsc4, description: "Added PDF formatting, per-leader prayer request toggle, group meeting time/location in footer per Jennifer's review feedback",        entry_date: daysAgo(5),  start_time: t(13),    duration_hours: 2.0, hourly_rate: 175, billable: true, billed: false },
 
     // ── FBM T1: Contribution statements (5.5h) → INV-1004 ──
-    { client_id: fbm, task_id: fbm1, description: "Customized contribution statement template — FBM logo, address, EIN, fund breakdown format per donor type (online vs. cash/check)", entry_date: daysAgo(21), duration_hours: 2.0, hourly_rate: 150, billable: true, billed: true, invoice_id: i1004 },
-    { client_id: fbm, task_id: fbm1, description: "Configured batch generation process — email vs. print preference logic, tested with 25-record sample, documented admin runbook", entry_date: daysAgo(20), duration_hours: 2.0, hourly_rate: 150, billable: true, billed: true, invoice_id: i1004 },
-    { client_id: fbm, task_id: fbm1, description: "Full 4,200 household batch run — resolved 3 PDF errors (NULL email contacts), walked David through admin process, confirmed delivery", entry_date: daysAgo(19), duration_hours: 1.5, hourly_rate: 150, billable: true, billed: true, invoice_id: i1004 },
+    // daysAgo(21): 09:00–11:00 (NGC T1 #3 at 13:00)
+    { client_id: fbm, task_id: fbm1, description: "Customized contribution statement template — FBM logo, address, EIN, fund breakdown format per donor type (online vs. cash/check)",  entry_date: daysAgo(21), start_time: t(9),     duration_hours: 2.0, hourly_rate: 150, billable: true, billed: true, invoice_id: i1004 },
+    // daysAgo(20): 09:30–11:30 (NGC T1 #4 at 13:00)
+    { client_id: fbm, task_id: fbm1, description: "Configured batch generation process — email vs. print preference logic, tested with 25-record sample, documented admin runbook",      entry_date: daysAgo(20), start_time: t(9, 30), duration_hours: 2.0, hourly_rate: 150, billable: true, billed: true, invoice_id: i1004 },
+    // daysAgo(19): 09:00–10:30
+    { client_id: fbm, task_id: fbm1, description: "Full 4,200 household batch run — resolved 3 PDF errors (NULL email contacts), walked David through admin process, confirmed delivery", entry_date: daysAgo(19), start_time: t(9),     duration_hours: 1.5, hourly_rate: 150, billable: true, billed: true, invoice_id: i1004 },
 
     // ── FBM T2: Giving dashboard widget (9h) → INV-1008 (DRAFT) ──
-    { client_id: fbm, task_id: fbm2, description: "Architecture design and MP API authentication — OAuth token flow, rate limiting, 5-minute polling interval strategy", entry_date: daysAgo(14), duration_hours: 2.0, hourly_rate: 150, billable: true, billed: true, invoice_id: i1008 },
-    { client_id: fbm, task_id: fbm2, description: "Built core widget — today's giving total, MTD vs. budget progress bar, fund breakdown list with percentage indicators", entry_date: daysAgo(13), duration_hours: 3.0, hourly_rate: 150, billable: true, billed: true, invoice_id: i1008 },
-    { client_id: fbm, task_id: fbm2, description: "Added 30-day trend sparkline (Chart.js), 5-min auto-refresh, error state handling, iframe embed on staff intranet homepage", entry_date: daysAgo(12), duration_hours: 3.0, hourly_rate: 150, billable: true, billed: true, invoice_id: i1008 },
-    { client_id: fbm, task_id: fbm2, description: "Cross-browser testing, performance review, handoff documentation and API key rotation instructions for IT team", entry_date: daysAgo(11), duration_hours: 1.0, hourly_rate: 150, billable: true, billed: true, invoice_id: i1008 },
+    // daysAgo(14): 09:00–11:00 (NGC T2 #1 at 13:00)
+    { client_id: fbm, task_id: fbm2, description: "Architecture design and MP API authentication — OAuth token flow, rate limiting, 5-minute polling interval strategy",                entry_date: daysAgo(14), start_time: t(9),     duration_hours: 2.0, hourly_rate: 150, billable: true, billed: true, invoice_id: i1008 },
+    // daysAgo(13): 09:00–12:00
+    { client_id: fbm, task_id: fbm2, description: "Built core widget — today's giving total, MTD vs. budget progress bar, fund breakdown list with percentage indicators",              entry_date: daysAgo(13), start_time: t(9),     duration_hours: 3.0, hourly_rate: 150, billable: true, billed: true, invoice_id: i1008 },
+    // daysAgo(12): 09:00–12:00 (NGC T2 #2 at 13:30)
+    { client_id: fbm, task_id: fbm2, description: "Added 30-day trend sparkline (Chart.js), 5-min auto-refresh, error state handling, iframe embed on staff intranet homepage",         entry_date: daysAgo(12), start_time: t(9),     duration_hours: 3.0, hourly_rate: 150, billable: true, billed: true, invoice_id: i1008 },
+    // daysAgo(11): 14:00–15:00
+    { client_id: fbm, task_id: fbm2, description: "Cross-browser testing, performance review, handoff documentation and API key rotation instructions for IT team",                     entry_date: daysAgo(11), start_time: t(14),    duration_hours: 1.0, hourly_rate: 150, billable: true, billed: true, invoice_id: i1008 },
 
     // ── NGC T1: ProPresenter integration (11h) → INV-1005 ──
-    { client_id: ngc, task_id: ngc1, description: "API research — MP service planning module endpoints, ProPresenter 7 JSON import schema, OAuth authentication design", entry_date: daysAgo(23), duration_hours: 2.0, hourly_rate: 185, billable: true, billed: true, invoice_id: i1005 },
-    { client_id: ngc, task_id: ngc1, description: "Built MP→ProPresenter data mapper — service order items to slide deck structure, scripture reference lookup and formatting", entry_date: daysAgo(22), duration_hours: 4.0, hourly_rate: 185, billable: true, billed: true, invoice_id: i1005 },
-    { client_id: ngc, task_id: ngc1, description: "Webhook trigger on MP service finalization, retry logic for transient failures, admin re-sync UI with last-sync timestamp", entry_date: daysAgo(21), duration_hours: 3.0, hourly_rate: 185, billable: true, billed: true, invoice_id: i1005 },
-    { client_id: ngc, task_id: ngc1, description: "End-to-end testing with live ProPresenter 7 install, 23-item service run, edge case handling, production deployment", entry_date: daysAgo(20), duration_hours: 2.0, hourly_rate: 185, billable: true, billed: true, invoice_id: i1005 },
+    // daysAgo(23): 09:00–11:00
+    { client_id: ngc, task_id: ngc1, description: "API research — MP service planning module endpoints, ProPresenter 7 JSON import schema, OAuth authentication design",                entry_date: daysAgo(23), start_time: t(9),     duration_hours: 2.0, hourly_rate: 185, billable: true, billed: true, invoice_id: i1005 },
+    // daysAgo(22): 09:00–13:00
+    { client_id: ngc, task_id: ngc1, description: "Built MP→ProPresenter data mapper — service order items to slide deck structure, scripture reference lookup and formatting",          entry_date: daysAgo(22), start_time: t(9),     duration_hours: 4.0, hourly_rate: 185, billable: true, billed: true, invoice_id: i1005 },
+    // daysAgo(21): 13:00–16:00 (FBM T1 #1 at 09:00)
+    { client_id: ngc, task_id: ngc1, description: "Webhook trigger on MP service finalization, retry logic for transient failures, admin re-sync UI with last-sync timestamp",          entry_date: daysAgo(21), start_time: t(13),    duration_hours: 3.0, hourly_rate: 185, billable: true, billed: true, invoice_id: i1005 },
+    // daysAgo(20): 13:00–15:00 (FBM T1 #2 at 09:30)
+    { client_id: ngc, task_id: ngc1, description: "End-to-end testing with live ProPresenter 7 install, 23-item service run, edge case handling, production deployment",                entry_date: daysAgo(20), start_time: t(13),    duration_hours: 2.0, hourly_rate: 185, billable: true, billed: true, invoice_id: i1005 },
 
     // ── NGC T2: Permissions audit (4h) → INV-1007 ──
-    { client_id: ngc, task_id: ngc2, description: "Full MP user audit — exported all 94 accounts, security groups, and permission assignments. Identified 12 over-privileged accounts.", entry_date: daysAgo(14), duration_hours: 2.0, hourly_rate: 185, billable: true, billed: true, invoice_id: i1007 },
-    { client_id: ngc, task_id: ngc2, description: "Implemented 6-role structure (Admin, Finance, Ministry Leader, Group Leader, Check-In Staff, Read Only), updated 28 accounts, delivered role matrix doc", entry_date: daysAgo(12), duration_hours: 2.0, hourly_rate: 185, billable: true, billed: true, invoice_id: i1007 },
+    // daysAgo(14): 13:00–15:00 (FBM T2 #1 at 09:00)
+    { client_id: ngc, task_id: ngc2, description: "Full MP user audit — exported all 94 accounts, security groups, and permission assignments. Identified 12 over-privileged accounts.", entry_date: daysAgo(14), start_time: t(13),   duration_hours: 2.0, hourly_rate: 185, billable: true, billed: true, invoice_id: i1007 },
+    // daysAgo(12): 13:30–15:30 (FBM T2 #3 at 09:00)
+    { client_id: ngc, task_id: ngc2, description: "Implemented 6-role structure (Admin, Finance, Ministry Leader, Group Leader, Check-In Staff, Read Only), updated 28 accounts, delivered role matrix doc", entry_date: daysAgo(12), start_time: t(13, 30), duration_hours: 2.0, hourly_rate: 185, billable: true, billed: true, invoice_id: i1007 },
 
     // ── NGC T3: Kiosk check-in widget (6h) → UNBILLED ──
-    { client_id: ngc, task_id: ngc3, description: "Touchscreen UI design — household lookup flow, child selection grid, express check-in mode. Mockups reviewed and approved by Lisa.", entry_date: daysAgo(5), duration_hours: 2.0, hourly_rate: 185, billable: true, billed: false },
-    { client_id: ngc, task_id: ngc3, description: "MP Family Check-In API integration — household lookup by phone, child record retrieval, badge generation payload, Dymo SDK printing", entry_date: daysAgo(4), duration_hours: 2.0, hourly_rate: 185, billable: true, billed: false },
-    { client_id: ngc, task_id: ngc3, description: "Offline queue with IndexedDB, sync-on-reconnect logic, 5-minute outage simulation test — all queued check-ins synced successfully", entry_date: daysAgo(3), duration_hours: 2.0, hourly_rate: 185, billable: true, billed: false },
+    // daysAgo(5): 15:30–17:30 (CCC T4 #1 at 09:00, GFC T3 #2 at 11:00, HSC T4 #2 at 13:00)
+    { client_id: ngc, task_id: ngc3, description: "Touchscreen UI design — household lookup flow, child selection grid, express check-in mode. Mockups reviewed and approved by Lisa.",  entry_date: daysAgo(5),  start_time: t(15, 30),duration_hours: 2.0, hourly_rate: 185, billable: true, billed: false },
+    // daysAgo(4): 09:30–11:30
+    { client_id: ngc, task_id: ngc3, description: "MP Family Check-In API integration — household lookup by phone, child record retrieval, badge generation payload, Dymo SDK printing", entry_date: daysAgo(4),  start_time: t(9, 30), duration_hours: 2.0, hourly_rate: 185, billable: true, billed: false },
+    // daysAgo(3): 10:30–12:30 — intentionally overlaps CCC T4 #2 (10:00–11:00) by 30 min
+    { client_id: ngc, task_id: ngc3, description: "Offline queue with IndexedDB, sync-on-reconnect logic, 5-minute outage simulation test — all queued check-ins synced successfully",   entry_date: daysAgo(3),  start_time: t(10, 30),duration_hours: 2.0, hourly_rate: 185, billable: true, billed: false },
   ];
 
   const teResult = assertOk(
