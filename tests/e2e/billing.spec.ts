@@ -29,7 +29,7 @@ async function buildMinimalInvoice(
 ) {
   const { dueDate, unitPrice = 100, quantity = 2 } = opts;
 
-  await page.goto("/app/invoices/new");
+  await page.goto("/app/finance/invoices/new");
   // Wait for the client dropdown to be interactive instead of networkidle,
   // which is unreliable under concurrent test load.
   await page.locator('[id="client_id"]').waitFor({ state: "visible", timeout: 30_000 });
@@ -128,7 +128,7 @@ test.describe("billing — invoice management", () => {
     await page.getByRole("button", { name: /save as draft/i }).click();
 
     // Redirects to /invoices/<uuid>
-    await page.waitForURL(/\/invoices\/[0-9a-f-]{36}$/, { timeout: 15_000 });
+    await page.waitForURL(/\/finance\/invoices\/[0-9a-f-]{36}$/, { timeout: 15_000 });
 
     await expect(page.getByText(/draft/i).first()).toBeVisible();
     await expect(page.getByText(/consulting services/i).first()).toBeVisible();
@@ -139,7 +139,7 @@ test.describe("billing — invoice management", () => {
   test("sending an invoice changes its status to sent", async ({ page }) => {
     await buildMinimalInvoice(page, { unitPrice: 300, quantity: 1 });
     await page.getByRole("button", { name: /save as draft/i }).click();
-    await page.waitForURL(/\/invoices\/[0-9a-f-]{36}$/, { timeout: 15_000 });
+    await page.waitForURL(/\/finance\/invoices\/[0-9a-f-]{36}$/, { timeout: 15_000 });
 
     await page.getByRole("button", { name: /^send$/i }).click();
 
@@ -153,7 +153,7 @@ test.describe("billing — invoice management", () => {
   test("invoice PDF endpoint returns 200 with correct content-type", async ({ page }) => {
     await buildMinimalInvoice(page, { unitPrice: 250, quantity: 1 });
     await page.getByRole("button", { name: /save as draft/i }).click();
-    await page.waitForURL(/\/invoices\/[0-9a-f-]{36}$/, { timeout: 15_000 });
+    await page.waitForURL(/\/finance\/invoices\/[0-9a-f-]{36}$/, { timeout: 15_000 });
 
     const invoiceId = page.url().split("/").pop()!;
     expect(invoiceId).toMatch(/^[0-9a-f-]{36}$/);
@@ -168,7 +168,7 @@ test.describe("billing — invoice management", () => {
   test("recording full payment marks invoice as paid", async ({ page }) => {
     await buildMinimalInvoice(page, { unitPrice: 500, quantity: 1 });
     await page.getByRole("button", { name: /save as draft/i }).click();
-    await page.waitForURL(/\/invoices\/[0-9a-f-]{36}$/, { timeout: 15_000 });
+    await page.waitForURL(/\/finance\/invoices\/[0-9a-f-]{36}$/, { timeout: 15_000 });
 
     // Send first
     await page.getByRole("button", { name: /^send$/i }).click();
@@ -187,14 +187,14 @@ test.describe("billing — invoice management", () => {
   test("invoice with past due date shows overdue badge after sending", async ({ page }) => {
     await buildMinimalInvoice(page, { unitPrice: 100, quantity: 1, dueDate: "2020-01-01" });
     await page.getByRole("button", { name: /save as draft/i }).click();
-    await page.waitForURL(/\/invoices\/[0-9a-f-]{36}$/, { timeout: 15_000 });
+    await page.waitForURL(/\/finance\/invoices\/[0-9a-f-]{36}$/, { timeout: 15_000 });
 
     // Send (overdue only computed for non-draft)
     await page.getByRole("button", { name: /^send$/i }).click();
     await expect(page.getByText(/overdue/i).first()).toBeVisible({ timeout: 10_000 });
 
     // Verify overdue badge appears on the list page too
-    await page.goto("/app/invoices");
+    await page.goto("/app/finance/invoices");
     await page.waitForLoadState("networkidle");
     await expect(page.getByText(/overdue/i).first()).toBeVisible();
   });
@@ -205,7 +205,7 @@ test.describe("billing — invoice management", () => {
     // First invoice
     await buildMinimalInvoice(page, { unitPrice: 100, quantity: 1 });
     await page.getByRole("button", { name: /save as draft/i }).click();
-    await page.waitForURL(/\/invoices\/[0-9a-f-]{36}$/, { timeout: 15_000 });
+    await page.waitForURL(/\/finance\/invoices\/[0-9a-f-]{36}$/, { timeout: 15_000 });
 
     const firstNumEl = page.getByText(/[A-Z]+-\d+/).first();
     const firstText = await firstNumEl.textContent() ?? "";
@@ -215,7 +215,7 @@ test.describe("billing — invoice management", () => {
     // Second invoice
     await buildMinimalInvoice(page, { unitPrice: 100, quantity: 1 });
     await page.getByRole("button", { name: /save as draft/i }).click();
-    await page.waitForURL(/\/invoices\/[0-9a-f-]{36}$/, { timeout: 15_000 });
+    await page.waitForURL(/\/finance\/invoices\/[0-9a-f-]{36}$/, { timeout: 15_000 });
 
     const secondNumEl = page.getByText(/[A-Z]+-\d+/).first();
     const secondText = await secondNumEl.textContent() ?? "";
@@ -227,7 +227,7 @@ test.describe("billing — invoice management", () => {
   // ── 9. Reports page loads without error ───────────────────────────────────
 
   test("reports page loads revenue and time summary without errors", async ({ page }) => {
-    await page.goto("/app/reports");
+    await page.goto("/app/finance/reports");
     await page.waitForLoadState("networkidle");
 
     // Must not show a generic error

@@ -8,11 +8,8 @@ const ADMIN_ROUTES = [
   "/app/clients",
   "/app/tasks",
   "/app/time",
-  "/app/invoices",
-  "/app/reports",
-  "/app/settings",
-  "/app/email-log",
-  "/app/portal-users",
+  "/app/finance",
+  "/app/administration",
 ];
 
 function isAdminRoute(pathname: string): boolean {

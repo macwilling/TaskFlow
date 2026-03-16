@@ -48,7 +48,7 @@ export async function updateBusinessInfoAction(
     .eq("tenant_id", ctx.tenantId);
 
   if (error) return { error: error.message };
-  revalidatePath("/app/settings");
+  revalidatePath("/app/administration");
   return {};
 }
 
@@ -79,7 +79,7 @@ export async function updateBrandingAction(
     .eq("tenant_id", ctx.tenantId);
 
   if (error) return { error: error.message };
-  revalidatePath("/app/settings");
+  revalidatePath("/app/administration");
   return {};
 }
 
@@ -132,7 +132,7 @@ export async function updateInvoiceSettingsAction(
     .eq("tenant_id", ctx.tenantId);
 
   if (error) return { error: error.message };
-  revalidatePath("/app/settings");
+  revalidatePath("/app/administration");
   return {};
 }
 
@@ -161,7 +161,7 @@ export async function updateEmailTemplatesAction(
     .eq("tenant_id", ctx.tenantId);
 
   if (error) return { error: error.message };
-  revalidatePath("/app/settings");
+  revalidatePath("/app/administration");
   return {};
 }
 
@@ -202,6 +202,6 @@ export async function updateTenantSlugAction(
     .eq("id", ctx.tenantId);
 
   if (error) return { error: error.message };
-  revalidatePath("/app/settings");
+  revalidatePath("/app/administration");
   return {};
 }

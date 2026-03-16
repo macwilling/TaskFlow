@@ -118,9 +118,9 @@ describe("proxy: admin routes", () => {
     "/app/tasks",
     "/app/tasks/AC-1",
     "/app/time",
-    "/app/invoices",
-    "/app/reports",
-    "/app/settings",
+    "/app/finance/invoices",
+    "/app/finance/reports",
+    "/app/administration",
   ];
 
   it("redirects unauthenticated users to /auth/login", async () => {
