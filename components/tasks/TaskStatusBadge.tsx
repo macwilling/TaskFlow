@@ -15,25 +15,25 @@ const PRIORITY_CONFIG = {
   urgent: { label: "Urgent", className: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-400 dark:border-red-900" },
 } as const;
 
-export function TaskStatusBadge({ status }: { status: string }) {
+export function TaskStatusBadge({ status, className }: { status: string; className?: string }) {
   const config = STATUS_CONFIG[status as keyof typeof STATUS_CONFIG] ?? {
     label: status,
     className: "bg-muted text-muted-foreground border-border",
   };
   return (
-    <Badge variant="outline" className={cn("text-xs", config.className)}>
+    <Badge variant="outline" className={cn("text-xs", config.className, className)}>
       {config.label}
     </Badge>
   );
 }
 
-export function TaskPriorityBadge({ priority }: { priority: string }) {
+export function TaskPriorityBadge({ priority, className }: { priority: string; className?: string }) {
   const config = PRIORITY_CONFIG[priority as keyof typeof PRIORITY_CONFIG] ?? {
     label: priority,
     className: "bg-muted text-muted-foreground border-border",
   };
   return (
-    <Badge variant="outline" className={cn("text-xs", config.className)}>
+    <Badge variant="outline" className={cn("text-xs", config.className, className)}>
       {config.label}
     </Badge>
   );
