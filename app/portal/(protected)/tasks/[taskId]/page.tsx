@@ -67,6 +67,22 @@ export default async function PortalTaskPage({
 
   if (error || !task) notFound();
 
+  const authorIds = [...new Set((comments ?? []).map((c) => c.author_id))];
+  let authorNames: Record<string, string> = {};
+  if (authorIds.length > 0) {
+    const { data: profiles } = await db
+      .from("profiles")
+      .select("id, full_name")
+      .in("id", authorIds);
+    authorNames = Object.fromEntries(
+      (profiles ?? []).map((p) => [p.id, p.full_name ?? ""])
+    );
+  }
+  const commentsWithNames = (comments ?? []).map((c) => ({
+    ...c,
+    author_name: authorNames[c.author_id] ?? "",
+  }));
+
   // In impersonation mode, verify the task belongs to the impersonated client
   if (isImpersonating && (task as { client_id?: string }).client_id !== impersonation!.clientId) {
     notFound();
@@ -153,7 +169,7 @@ export default async function PortalTaskPage({
       <CommentThread
         taskId={taskId}
         currentUserId={user.id}
-        comments={comments ?? []}
+        comments={commentsWithNames}
         readOnly={isImpersonating}
       />
 
