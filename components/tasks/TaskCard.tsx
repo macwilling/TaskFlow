@@ -3,15 +3,19 @@
 import Link from "next/link";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { TaskPriorityBadge } from "./TaskStatusBadge";
+import { TaskPriorityBadge, type TaskStatusShape } from "./TaskStatusBadge";
+
+export type { TaskStatusShape };
 
 export interface Task {
   id: string;
   task_number: number | null;
   title: string;
-  status: string;
+  status_id: string;
+  task_statuses: TaskStatusShape | null;
   priority: string;
   due_date: string | null;
+  created_at?: string;
   clients: { name: string; color: string | null; client_key: string | null } | null;
 }
 
@@ -21,8 +25,8 @@ export function taskHref(task: Task) {
   return `/app/tasks/${task.id}`;
 }
 
-function isPastDue(due: string | null, status: string) {
-  if (!due || status === "closed") return false;
+function isPastDue(due: string | null, isClosed: boolean) {
+  if (!due || isClosed) return false;
   return new Date(due) < new Date();
 }
 
@@ -38,7 +42,7 @@ interface TaskCardProps {
 
 /** Plain card — used inside DragOverlay as the floating ghost */
 export function TaskCard({ task, isOverlay }: TaskCardProps) {
-  const overdue = isPastDue(task.due_date, task.status);
+  const overdue = isPastDue(task.due_date, task.task_statuses?.is_closed ?? false);
   return (
     <Link
       href={taskHref(task)}

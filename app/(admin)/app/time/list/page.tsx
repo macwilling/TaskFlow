@@ -22,7 +22,7 @@ export default async function TimeListPage({
   const params = await searchParams;
   const supabase = await createClient();
 
-  const [{ data: clients }, { data: tasks }] = await Promise.all([
+  const [{ data: clients }, { data: allTasks }, { data: closedStatus }] = await Promise.all([
     supabase
       .from("clients")
       .select("id, name, color, default_rate, client_key")
@@ -30,10 +30,16 @@ export default async function TimeListPage({
       .order("name"),
     supabase
       .from("tasks")
-      .select("id, title, client_id, task_number, status")
-      .not("status", "eq", "closed")
+      .select("id, title, client_id, task_number, status_id, task_statuses(id, name, color, is_closed)")
       .order("title"),
+    supabase
+      .from("task_statuses")
+      .select("id")
+      .eq("is_closed", true)
+      .maybeSingle(),
   ]);
+
+  const tasks = (allTasks ?? []).filter((t) => t.status_id !== closedStatus?.id);
 
   let query = supabase
     .from("time_entries")
@@ -76,7 +82,8 @@ export default async function TimeListPage({
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           entries={(entries ?? []) as unknown as any}
           clients={clients ?? []}
-          tasks={tasks ?? []}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          tasks={tasks as any[]}
           totalHours={totalHours}
         />
       </PageContainer>

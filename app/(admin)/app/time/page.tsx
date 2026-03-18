@@ -70,7 +70,7 @@ export default async function TimePage() {
   const start = dateStr(weekStart);
   const end = dateStr(weekEnd);
 
-  const [{ data: clients }, { data: tasks }, { data: entries }] = await Promise.all([
+  const [{ data: clients }, { data: allTasks }, { data: closedStatus }, { data: entries }] = await Promise.all([
     supabase
       .from("clients")
       .select("id, name, color, default_rate, client_key")
@@ -78,9 +78,13 @@ export default async function TimePage() {
       .order("name"),
     supabase
       .from("tasks")
-      .select("id, title, client_id, task_number, status")
-      .not("status", "eq", "closed")
+      .select("id, title, client_id, task_number, status_id, task_statuses(id, name, color, is_closed)")
       .order("title"),
+    supabase
+      .from("task_statuses")
+      .select("id")
+      .eq("is_closed", true)
+      .maybeSingle(),
     supabase
       .from("time_entries")
       .select("id, description, entry_date, start_time, duration_hours, billable, billed, hourly_rate, client_id, task_id, clients(name, color), tasks(title)")
@@ -89,6 +93,7 @@ export default async function TimePage() {
       .order("entry_date", { ascending: true }),
   ]);
 
+  const openTasks = (allTasks ?? []).filter((t) => t.status_id !== closedStatus?.id);
   const initialEvents = formatEvents(entries ?? []);
 
   return (
@@ -107,7 +112,8 @@ export default async function TimePage() {
       <PageContainer>
         <TimeCalendarWrapper
           clients={clients ?? []}
-          tasks={tasks ?? []}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          tasks={openTasks as any[]}
           initialEvents={initialEvents}
         />
       </PageContainer>

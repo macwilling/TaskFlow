@@ -10,10 +10,18 @@ import { Plus } from "lucide-react";
 export default async function TasksPage() {
   const supabase = await createClient();
 
-  const { data: tasks, error } = await supabase
-    .from("tasks")
-    .select("id, task_number, title, status, priority, due_date, created_at, clients(name, color, client_key)")
-    .order("created_at", { ascending: false });
+  const [{ data: tasks, error }, { data: statuses }] = await Promise.all([
+    supabase
+      .from("tasks")
+      .select(
+        "id, task_number, title, status_id, priority, due_date, created_at, task_statuses(id, name, color, is_closed), clients(name, color, client_key)"
+      )
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("task_statuses")
+      .select("id, tenant_id, name, color, position, is_default, is_closed, created_at")
+      .order("position", { ascending: true }),
+  ]);
 
   return (
     <>
@@ -34,7 +42,7 @@ export default async function TasksPage() {
         ) : (
           <Suspense fallback={null}>
             {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-            <TasksView tasks={(tasks ?? []) as any} />
+            <TasksView tasks={(tasks ?? []) as any} statuses={(statuses ?? []) as any} />
           </Suspense>
         )}
       </PageContainer>

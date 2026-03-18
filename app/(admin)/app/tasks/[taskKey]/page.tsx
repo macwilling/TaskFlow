@@ -58,7 +58,7 @@ async function TimeEntriesPanel({
   clientId: string;
 }) {
   const supabase = await createClient();
-  const [{ data: timeEntries }, { data: allClients }, { data: openTasks }] =
+  const [{ data: timeEntries }, { data: allClients }, { data: allTasks }, { data: closedStatus }] =
     await Promise.all([
       supabase
         .from("time_entries")
@@ -72,17 +72,24 @@ async function TimeEntriesPanel({
         .order("name"),
       supabase
         .from("tasks")
-        .select("id, title, client_id, task_number, status")
-        .not("status", "eq", "closed")
+        .select("id, title, client_id, task_number, status_id, task_statuses(id, name, color, is_closed)")
         .order("title"),
+      supabase
+        .from("task_statuses")
+        .select("id")
+        .eq("is_closed", true)
+        .maybeSingle(),
     ]);
+
+  const openTasks = (allTasks ?? []).filter((t) => t.status_id !== closedStatus?.id);
 
   return (
     <TaskTimeEntries
       taskId={taskId}
       clientId={clientId}
       clients={allClients ?? []}
-      tasks={openTasks ?? []}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      tasks={openTasks as any[]}
       entries={timeEntries ?? []}
     />
   );
@@ -229,14 +236,18 @@ export default async function TaskDetailPage({
   if (!clientRow) notFound();
 
   // Task query needs clientRow.id; profile query needs user.id — both ready now.
-  const [{ data: task, error }, { data: profile }] = await Promise.all([
+  const [{ data: task, error }, { data: profile }, { data: statuses }] = await Promise.all([
     supabase
       .from("tasks")
-      .select("*, clients(id, name, color, client_key, tenant_id, tenants(id))")
+      .select("*, task_statuses(id, name, color, is_closed), clients(id, name, color, client_key, tenant_id, tenants(id))")
       .eq("client_id", clientRow.id)
       .eq("task_number", taskNumber)
       .single(),
     supabase.from("profiles").select("tenant_id").eq("id", user.id).single(),
+    supabase
+      .from("task_statuses")
+      .select("id, tenant_id, name, color, position, is_default, is_closed, created_at")
+      .order("position", { ascending: true }),
   ]);
 
   if (error || !task) notFound();
@@ -252,7 +263,8 @@ export default async function TaskDetailPage({
 
   const taskId = task.id as string;
   const tenantId = profile?.tenant_id ?? client?.tenant_id ?? "";
-  const isClosed = task.status === "closed";
+  const taskStatus = task.task_statuses as { id: string; name: string; color: string; is_closed: boolean } | null;
+  const isClosed = taskStatus?.is_closed ?? false;
   const displayKey = client?.client_key
     ? `${client.client_key}-${task.task_number}`
     : null;
@@ -328,7 +340,8 @@ export default async function TaskDetailPage({
                   <dd>
                     <TaskStatusControl
                       taskId={taskId}
-                      currentStatus={task.status}
+                      statuses={(statuses ?? []) as any}
+                      currentStatusId={task.status_id as string}
                       currentResolutionNotes={task.resolution_notes ?? ""}
                     />
                   </dd>

@@ -84,8 +84,13 @@ describe("createTaskAction", () => {
       data: { user: adminUser },
       error: null,
     });
+    // profile
     mockSupabaseFrom.mockReturnValueOnce(
       makeChain({ data: { tenant_id: "t1" }, error: null })
+    );
+    // default status lookup
+    mockSupabaseFrom.mockReturnValueOnce(
+      makeChain({ data: { id: "status-1" }, error: null })
     );
     mockSupabaseClient.rpc.mockResolvedValueOnce({
       data: null,
@@ -100,8 +105,13 @@ describe("createTaskAction", () => {
       data: { user: adminUser },
       error: null,
     });
+    // profile
     mockSupabaseFrom.mockReturnValueOnce(
       makeChain({ data: { tenant_id: "t1" }, error: null })
+    );
+    // default status lookup
+    mockSupabaseFrom.mockReturnValueOnce(
+      makeChain({ data: { id: "status-1" }, error: null })
     );
     mockSupabaseClient.rpc.mockResolvedValueOnce({ data: 1, error: null });
     mockSupabaseFrom.mockReturnValueOnce(
@@ -129,6 +139,10 @@ describe("createTaskAction", () => {
     });
     const profileChain = makeChain({ data: { tenant_id: "profile-tenant" }, error: null });
     mockSupabaseFrom.mockReturnValueOnce(profileChain);
+    // default status lookup
+    mockSupabaseFrom.mockReturnValueOnce(
+      makeChain({ data: { id: "status-1" }, error: null })
+    );
     mockSupabaseClient.rpc.mockResolvedValueOnce({ data: 42, error: null });
     const tasksChain = makeChain({
       data: { id: "t", task_number: 42, clients: { client_key: "X" } },
@@ -139,7 +153,7 @@ describe("createTaskAction", () => {
     await createTaskAction(null, makeFormData());
 
     expect(tasksChain.insert).toHaveBeenCalledWith(
-      expect.objectContaining({ tenant_id: "profile-tenant" })
+      expect.objectContaining({ tenant_id: "profile-tenant", status_id: "status-1" })
     );
   });
 });
@@ -191,11 +205,37 @@ describe("closeTaskAction", () => {
     expect(result).toEqual({ error: "Unauthorized." });
   });
 
+  it("returns error when closed status not found", async () => {
+    mockSupabaseClient.auth.getUser.mockResolvedValueOnce({
+      data: { user: adminUser },
+      error: null,
+    });
+    // profile lookup
+    mockSupabaseFrom.mockReturnValueOnce(
+      makeChain({ data: { tenant_id: "t1" }, error: null })
+    );
+    // closed status lookup — not found
+    mockSupabaseFrom.mockReturnValueOnce(
+      makeChain({ data: null, error: { message: "not found" } })
+    );
+    const result = await closeTaskAction("task-1", "done");
+    expect(result).toEqual({ error: "Closed status not configured." });
+  });
+
   it("returns DB error on update failure", async () => {
     mockSupabaseClient.auth.getUser.mockResolvedValueOnce({
       data: { user: adminUser },
       error: null,
     });
+    // profile
+    mockSupabaseFrom.mockReturnValueOnce(
+      makeChain({ data: { tenant_id: "t1" }, error: null })
+    );
+    // closed status
+    mockSupabaseFrom.mockReturnValueOnce(
+      makeChain({ data: { id: "closed-status-id" }, error: null })
+    );
+    // update tasks — error
     mockSupabaseFrom.mockReturnValueOnce(
       makeChain({ data: null, error: { message: "db error" } })
     );
@@ -203,12 +243,23 @@ describe("closeTaskAction", () => {
     expect(result).toEqual({ error: "db error" });
   });
 
-  it("closes task and revalidates on success", async () => {
+  it("closes task using is_closed status and revalidates on success", async () => {
     mockSupabaseClient.auth.getUser.mockResolvedValueOnce({
       data: { user: adminUser },
       error: null,
     });
-    mockSupabaseFrom.mockReturnValueOnce(makeChain({ data: null, error: null }));
+    // profile
+    mockSupabaseFrom.mockReturnValueOnce(
+      makeChain({ data: { tenant_id: "t1" }, error: null })
+    );
+    // closed status lookup
+    mockSupabaseFrom.mockReturnValueOnce(
+      makeChain({ data: { id: "closed-status-id" }, error: null })
+    );
+    // update tasks
+    const updateChain = makeChain({ data: null, error: null });
+    mockSupabaseFrom.mockReturnValueOnce(updateChain);
+    // getTaskSlug
     mockSupabaseFrom.mockReturnValueOnce(
       makeChain({
         data: { task_number: 1, clients: { client_key: "AC" } },
@@ -219,6 +270,9 @@ describe("closeTaskAction", () => {
 
     const result = await closeTaskAction("task-1", "fixed it");
     expect(result).toEqual({});
+    expect(updateChain.update).toHaveBeenCalledWith(
+      expect.objectContaining({ status_id: "closed-status-id", closed_at: expect.any(String) })
+    );
     expect(revalidatePath).toHaveBeenCalledWith("/app/tasks/AC-1");
     expect(revalidatePath).toHaveBeenCalledWith("/app/tasks");
   });
@@ -228,43 +282,53 @@ describe("closeTaskAction", () => {
 
 describe("updateTaskStatusAction", () => {
   it("returns Unauthorized when no user", async () => {
-    const result = await updateTaskStatusAction("task-1", "in_progress");
+    const result = await updateTaskStatusAction("task-1", "status-uuid-1");
     expect(result).toEqual({ error: "Unauthorized." });
   });
 
-  it("sets closed_at when status is closed", async () => {
+  it("sets closed_at when target status is_closed", async () => {
     mockSupabaseClient.auth.getUser.mockResolvedValueOnce({
       data: { user: adminUser },
       error: null,
     });
+    // status lookup
+    mockSupabaseFrom.mockReturnValueOnce(
+      makeChain({ data: { is_closed: true }, error: null })
+    );
     const updateChain = makeChain({ data: null, error: null });
     mockSupabaseFrom.mockReturnValueOnce(updateChain);
+    // getTaskSlug
     mockSupabaseFrom.mockReturnValueOnce(
       makeChain({ data: { task_number: 1, clients: { client_key: "X" } }, error: null })
     );
 
-    await updateTaskStatusAction("task-1", "closed");
+    await updateTaskStatusAction("task-1", "closed-status-id");
 
     expect(updateChain.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: "closed", closed_at: expect.any(String) })
+      expect.objectContaining({ status_id: "closed-status-id", closed_at: expect.any(String) })
     );
   });
 
-  it("clears closed_at when status changes from closed", async () => {
+  it("clears closed_at when target status is not closed", async () => {
     mockSupabaseClient.auth.getUser.mockResolvedValueOnce({
       data: { user: adminUser },
       error: null,
     });
+    // status lookup — not closed
+    mockSupabaseFrom.mockReturnValueOnce(
+      makeChain({ data: { is_closed: false }, error: null })
+    );
     const updateChain = makeChain({ data: null, error: null });
     mockSupabaseFrom.mockReturnValueOnce(updateChain);
+    // getTaskSlug
     mockSupabaseFrom.mockReturnValueOnce(
       makeChain({ data: { task_number: 1, clients: { client_key: "X" } }, error: null })
     );
 
-    await updateTaskStatusAction("task-1", "open");
+    await updateTaskStatusAction("task-1", "open-status-id");
 
     expect(updateChain.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: "open", closed_at: null })
+      expect.objectContaining({ status_id: "open-status-id", closed_at: null })
     );
   });
 });

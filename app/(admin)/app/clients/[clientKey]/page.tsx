@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { TopBar } from "@/components/layout/TopBar";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { ArchiveClientButton } from "@/components/clients/ArchiveClientButton";
-import { ClientDetailTabs, type TabKey, type TimeEntryForTabs } from "@/components/clients/ClientDetailTabs";
+import { ClientDetailTabs, type TabKey, type TimeEntryForTabs, type TaskForTabs } from "@/components/clients/ClientDetailTabs";
 import { Button } from "@/components/ui/button";
 import { Pencil } from "lucide-react";
 
@@ -50,7 +50,7 @@ export default async function ClientDetailPage({
       .maybeSingle(),
     supabase
       .from("tasks")
-      .select("id, title, status, priority, due_date, task_number")
+      .select("id, title, status_id, task_statuses(id, name, color, is_closed), priority, due_date, task_number")
       .eq("client_id", clientId)
       .order("created_at", { ascending: false }),
     supabase
@@ -98,13 +98,13 @@ export default async function ClientDetailPage({
     .reduce((s, inv) => s + (Number(inv.total ?? 0) - Number(inv.amount_paid ?? 0)), 0);
 
   const taskListForModal = (tasks ?? [])
-    .filter((t) => t.status !== "closed")
+    .filter((t) => !(t.task_statuses as any)?.[0]?.is_closed)
     .map((t) => ({
       id: t.id,
       title: t.title,
       client_id: clientId,
       task_number: t.task_number,
-      status: t.status,
+      task_statuses: ((t.task_statuses as any)?.[0] ?? null) as { id: string; name: string; color: string; is_closed: boolean } | null,
     }));
 
   return (
@@ -142,7 +142,7 @@ export default async function ClientDetailPage({
           clientKey={clientKey}
           billingAddress={billingAddress}
           taskListForModal={taskListForModal}
-          tasks={tasks ?? []}
+          tasks={(tasks ?? []) as unknown as TaskForTabs[]}
           entries={entries}
           totalHours={totalHours}
           billableHours={billableHours}

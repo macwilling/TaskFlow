@@ -1,15 +1,16 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
-import { TaskStatusBadge, TaskPriorityBadge } from "./TaskStatusBadge";
+import { TaskStatusBadge, TaskPriorityBadge, type TaskStatusShape } from "./TaskStatusBadge";
 
 interface Task {
   id: string;
   task_number: number | null;
   title: string;
-  status: string;
+  status_id: string;
+  task_statuses: TaskStatusShape | null;
   priority: string;
   due_date: string | null;
-  created_at: string;
+  created_at?: string;
   clients: { name: string; color: string | null; client_key: string | null } | null;
 }
 
@@ -28,8 +29,8 @@ function formatDate(d: string | null) {
   });
 }
 
-function isPastDue(due: string | null, status: string) {
-  if (!due || status === "closed") return false;
+function isPastDue(due: string | null, isClosed: boolean) {
+  if (!due || isClosed) return false;
   return new Date(due) < new Date();
 }
 
@@ -91,12 +92,12 @@ export function TaskListView({ tasks }: { tasks: Task[] }) {
                 ) : "—"}
               </td>
               <td className="px-4 py-3">
-                <TaskStatusBadge status={task.status} />
+                <TaskStatusBadge status={task.task_statuses} />
               </td>
               <td className="px-4 py-3">
                 <TaskPriorityBadge priority={task.priority} />
               </td>
-              <td className={`px-4 py-3 text-sm ${isPastDue(task.due_date, task.status) ? "text-red-600 dark:text-red-400 font-medium" : "text-muted-foreground"}`}>
+              <td className={`px-4 py-3 text-sm ${isPastDue(task.due_date, task.task_statuses?.is_closed ?? false) ? "text-red-600 dark:text-red-400 font-medium" : "text-muted-foreground"}`}>
                 {formatDate(task.due_date)}
               </td>
               <td className="pr-3">

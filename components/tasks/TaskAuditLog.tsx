@@ -27,12 +27,6 @@ interface TaskAuditLogProps {
   entries: AuditEntry[];
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  backlog: "Backlog",
-  in_progress: "In Progress",
-  in_review: "In Review",
-  closed: "Closed",
-};
 
 function formatTimestamp(iso: string) {
   return new Date(iso).toLocaleString("en-US", {
@@ -80,8 +74,8 @@ function entryDescription(entry: AuditEntry): string {
     case "created":
       return `${actor} created this task`;
     case "status_changed": {
-      const from = STATUS_LABELS[entry.old_value ?? ""] ?? entry.old_value ?? "unknown";
-      const to = STATUS_LABELS[entry.new_value ?? ""] ?? entry.new_value ?? "unknown";
+      const from = entry.old_value ?? "unknown";
+      const to = entry.new_value ?? "unknown";
       return `${actor} changed status from "${from}" to "${to}"`;
     }
     case "title_changed":

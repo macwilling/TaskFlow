@@ -2,21 +2,12 @@
 
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
+import type { TaskStatus } from "@/app/actions/task-statuses";
 import { TaskListView } from "./TaskListView";
 import { TaskBoardView } from "./TaskBoardView";
 import { TaskFilters } from "./TaskFilters";
 import { TaskViewToggle } from "./TaskViewToggle";
-
-interface Task {
-  id: string;
-  task_number: number | null;
-  title: string;
-  status: string;
-  priority: string;
-  due_date: string | null;
-  created_at: string;
-  clients: { name: string; color: string | null; client_key: string | null } | null;
-}
+import type { Task } from "./TaskCard";
 
 function syncUrl(status: string, q: string, view: string) {
   const params = new URLSearchParams();
@@ -24,10 +15,16 @@ function syncUrl(status: string, q: string, view: string) {
   if (q) params.set("q", q);
   if (view !== "list") params.set("view", view);
   const qs = params.toString();
-  window.history.replaceState(null, "", qs ? `/app/tasks?${qs}` : "/tasks");
+  window.history.replaceState(null, "", qs ? `/app/tasks?${qs}` : "/app/tasks");
 }
 
-export function TasksView({ tasks }: { tasks: Task[] }) {
+export function TasksView({
+  tasks,
+  statuses,
+}: {
+  tasks: Task[];
+  statuses: TaskStatus[];
+}) {
   const searchParams = useSearchParams();
   const [status, setStatus] = useState(searchParams.get("status") ?? "");
   const [q, setQ] = useState(searchParams.get("q") ?? "");
@@ -49,7 +46,7 @@ export function TasksView({ tasks }: { tasks: Task[] }) {
   }
 
   const filtered = tasks.filter((t) => {
-    if (status && t.status !== status) return false;
+    if (status && t.status_id !== status) return false;
     if (q && !t.title.toLowerCase().includes(q.toLowerCase())) return false;
     return true;
   });
@@ -60,6 +57,7 @@ export function TasksView({ tasks }: { tasks: Task[] }) {
         <TaskFilters
           q={q}
           status={status}
+          statuses={statuses}
           onQChange={handleQChange}
           onStatusChange={handleStatusChange}
         />
@@ -67,7 +65,7 @@ export function TasksView({ tasks }: { tasks: Task[] }) {
       </div>
 
       {view === "board" ? (
-        <TaskBoardView tasks={filtered} />
+        <TaskBoardView tasks={filtered} statuses={statuses} />
       ) : (
         <TaskListView tasks={filtered} />
       )}

@@ -24,6 +24,7 @@ import {
   UserCog,
   Server,
   Bell,
+  Layers,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -69,6 +70,7 @@ const navConfig: (NavItem | NavGroup)[] = [
       { href: "/app/administration/portal-users",    label: "Portal Users",     icon: Globe },
       { href: "/app/administration/team",            label: "Team",             icon: UserCog },
       { href: "/app/administration/general",         label: "General",          icon: Building2 },
+      { href: "/app/administration/task-statuses",   label: "Task Statuses",    icon: Layers },
       { href: "/app/administration/branding",        label: "Branding",         icon: Palette },
       { href: "/app/administration/invoices",        label: "Invoice settings", icon: Receipt },
       { href: "/app/administration/emails",          label: "Emails",           icon: AtSign },

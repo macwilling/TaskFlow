@@ -17,17 +17,9 @@ import {
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { updateTaskStatusAction } from "@/app/actions/tasks";
+import type { TaskStatus } from "@/app/actions/task-statuses";
 import { KanbanColumn } from "./KanbanColumn";
 import { TaskCard, type Task } from "./TaskCard";
-
-const COLUMNS = [
-  { id: "backlog", label: "Backlog" },
-  { id: "in_progress", label: "In Progress" },
-  { id: "in_review", label: "In Review" },
-  { id: "closed", label: "Closed" },
-] as const;
-
-const COLUMN_IDS = COLUMNS.map((c) => c.id);
 
 const dropAnimation: DropAnimation = {
   sideEffects: defaultDropAnimationSideEffects({
@@ -35,15 +27,23 @@ const dropAnimation: DropAnimation = {
   }),
 };
 
-export function TaskBoardView({ tasks: initialTasks }: { tasks: Task[] }) {
+export function TaskBoardView({
+  tasks: initialTasks,
+  statuses,
+}: {
+  tasks: Task[];
+  statuses: TaskStatus[];
+}) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
-  const [dragStartStatus, setDragStartStatus] = useState<string | null>(null);
+  const [dragStartStatusId, setDragStartStatusId] = useState<string | null>(null);
 
   // Sync when RSC re-renders with fresh data after revalidatePath
   useEffect(() => {
     setTasks(initialTasks);
   }, [initialTasks]);
+
+  const columnIds = statuses.map((s) => s.id);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -60,7 +60,7 @@ export function TaskBoardView({ tasks: initialTasks }: { tasks: Task[] }) {
   function handleDragStart({ active }: DragStartEvent) {
     const task = tasks.find((t) => t.id === active.id);
     setActiveTask(task ?? null);
-    setDragStartStatus(task?.status ?? null);
+    setDragStartStatusId(task?.status_id ?? null);
   }
 
   function handleDragOver({ active, over }: DragOverEvent) {
@@ -68,15 +68,31 @@ export function TaskBoardView({ tasks: initialTasks }: { tasks: Task[] }) {
     const activeId = active.id as string;
     const overId = over.id as string;
 
-    // Resolve target column: overId is either a column id or a task id
-    const targetCol = COLUMN_IDS.includes(overId as (typeof COLUMN_IDS)[number])
+    // Resolve target column: overId is either a status UUID (column) or a task UUID
+    const targetStatusId = columnIds.includes(overId)
       ? overId
-      : tasks.find((t) => t.id === overId)?.status;
+      : tasks.find((t) => t.id === overId)?.status_id;
 
-    if (!targetCol) return;
+    if (!targetStatusId) return;
+
+    const targetStatus = statuses.find((s) => s.id === targetStatusId);
+    if (!targetStatus) return;
 
     setTasks((prev) =>
-      prev.map((t) => (t.id === activeId ? { ...t, status: targetCol } : t))
+      prev.map((t) =>
+        t.id === activeId
+          ? {
+              ...t,
+              status_id: targetStatusId,
+              task_statuses: {
+                id: targetStatus.id,
+                name: targetStatus.name,
+                color: targetStatus.color,
+                is_closed: targetStatus.is_closed,
+              },
+            }
+          : t
+      )
     );
   }
 
@@ -87,38 +103,53 @@ export function TaskBoardView({ tasks: initialTasks }: { tasks: Task[] }) {
     if (!task) return;
 
     // No column change — nothing to persist
-    if (task.status === dragStartStatus) {
-      setDragStartStatus(null);
+    if (task.status_id === dragStartStatusId) {
+      setDragStartStatusId(null);
       return;
     }
 
-    setDragStartStatus(null);
+    setDragStartStatusId(null);
 
     // Snapshot for rollback
     const snapshot = [...tasks];
 
-    const result = await updateTaskStatusAction(task.id, task.status);
+    const result = await updateTaskStatusAction(task.id, task.status_id);
     if (result?.error) {
       setTasks(snapshot);
     }
   }
 
   function handleDragCancel() {
-    // Restore original status if drag is cancelled
-    if (activeTask && dragStartStatus) {
+    if (activeTask && dragStartStatusId) {
+      const originalStatus = statuses.find((s) => s.id === dragStartStatusId);
       setTasks((prev) =>
         prev.map((t) =>
-          t.id === activeTask.id ? { ...t, status: dragStartStatus } : t
+          t.id === activeTask.id
+            ? {
+                ...t,
+                status_id: dragStartStatusId,
+                task_statuses: originalStatus
+                  ? {
+                      id: originalStatus.id,
+                      name: originalStatus.name,
+                      color: originalStatus.color,
+                      is_closed: originalStatus.is_closed,
+                    }
+                  : t.task_statuses,
+              }
+            : t
         )
       );
     }
     setActiveTask(null);
-    setDragStartStatus(null);
+    setDragStartStatusId(null);
   }
 
   const byStatus = Object.fromEntries(
-    COLUMNS.map((col) => [col.id, tasks.filter((t) => t.status === col.id)])
+    statuses.map((s) => [s.id, tasks.filter((t) => t.status_id === s.id)])
   );
+
+  const colCount = statuses.length;
 
   return (
     <DndContext
@@ -129,14 +160,21 @@ export function TaskBoardView({ tasks: initialTasks }: { tasks: Task[] }) {
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 min-h-[400px]">
-        {COLUMNS.map((col) => (
-          <KanbanColumn
-            key={col.id}
-            column={col}
-            tasks={byStatus[col.id] ?? []}
-          />
-        ))}
+      <div className="overflow-x-auto pb-2">
+        <div
+          className="grid gap-3 min-h-[400px]"
+          style={{
+            gridTemplateColumns: `repeat(${colCount}, minmax(240px, 1fr))`,
+          }}
+        >
+          {statuses.map((status) => (
+            <KanbanColumn
+              key={status.id}
+              column={{ id: status.id, label: status.name }}
+              tasks={byStatus[status.id] ?? []}
+            />
+          ))}
+        </div>
       </div>
 
       <DragOverlay dropAnimation={dropAnimation}>
