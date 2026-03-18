@@ -48,7 +48,7 @@ export default async function PortalTaskPage({
   ] = await Promise.all([
     db
       .from("tasks")
-      .select("id, title, status, priority, due_date, description, resolution_notes, created_at, closed_at, client_id")
+      .select("id, title, status_id, task_statuses(id, name, color, is_closed), priority, due_date, description, resolution_notes, created_at, closed_at, client_id")
       .eq("id", taskId)
       .single(),
     // Fetch comments
@@ -88,7 +88,8 @@ export default async function PortalTaskPage({
     notFound();
   }
 
-  const isClosed = task.status === "closed";
+  const taskStatus = task.task_statuses as unknown as { id: string; name: string; color: string; is_closed: boolean } | null;
+  const isClosed = taskStatus?.is_closed ?? false;
 
   return (
     <div className="space-y-6">
@@ -106,7 +107,7 @@ export default async function PortalTaskPage({
       <div>
         <h1 className="text-lg font-semibold text-foreground">{task.title}</h1>
         <div className="flex items-center gap-2 mt-2">
-          <TaskStatusBadge status={task.status} />
+          <TaskStatusBadge status={taskStatus} />
           <TaskPriorityBadge priority={task.priority} />
         </div>
       </div>

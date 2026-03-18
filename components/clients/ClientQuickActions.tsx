@@ -12,7 +12,7 @@ interface Props {
   clientName: string;
   clientKey: string | null;
   clientDefaultRate: number | null;
-  tasks: { id: string; title: string; client_id: string; task_number: number | null; status: string }[];
+  tasks: { id: string; title: string; client_id: string; task_number: number | null; task_statuses: { id: string; name: string; color: string; is_closed: boolean } | null }[];
 }
 
 export function LogTimeButton({ clientId, clientName, clientKey, clientDefaultRate, tasks }: Props) {

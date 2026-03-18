@@ -62,6 +62,16 @@ export async function createTaskAction(
   const estimated_hours = formData.get("estimated_hours") as string;
   const priority = (formData.get("priority") as string) || "medium";
 
+  // Look up the default status for this tenant
+  const { data: defaultStatus } = await supabase
+    .from("task_statuses")
+    .select("id")
+    .eq("tenant_id", profile.tenant_id)
+    .eq("is_default", true)
+    .single();
+
+  if (!defaultStatus) return { error: "Default task status not configured." };
+
   // Atomically claim the next task number for this client
   const { data: taskNumber, error: numError } = await supabase
     .rpc("next_task_number_for_client", { p_client_id: client_id });
@@ -78,6 +88,7 @@ export async function createTaskAction(
       due_date: due_date || null,
       estimated_hours: estimated_hours ? parseFloat(estimated_hours) : null,
       task_number: taskNumber,
+      status_id: defaultStatus.id,
     })
     .select("id, task_number, clients(client_key)")
     .single();
@@ -200,7 +211,7 @@ export async function updateTaskContentAction(
 
 export async function updateTaskStatusAction(
   taskId: string,
-  status: string
+  statusId: string
 ): Promise<{ error?: string }> {
   const supabase = await createClient();
   const {
@@ -211,8 +222,15 @@ export async function updateTaskStatusAction(
     return { error: "Unauthorized." };
   }
 
-  const update: Record<string, unknown> = { status };
-  if (status === "closed") {
+  // Look up the status to determine if it's the closed (terminal) status
+  const { data: status } = await supabase
+    .from("task_statuses")
+    .select("is_closed")
+    .eq("id", statusId)
+    .single();
+
+  const update: Record<string, unknown> = { status_id: statusId };
+  if (status?.is_closed) {
     update.closed_at = new Date().toISOString();
   } else {
     update.closed_at = null;
@@ -246,10 +264,28 @@ export async function closeTaskAction(
     return { error: "Unauthorized." };
   }
 
+  // Find the tenant's closed (terminal) status
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("tenant_id")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile) return { error: "Profile not found." };
+
+  const { data: closedStatus } = await supabase
+    .from("task_statuses")
+    .select("id")
+    .eq("tenant_id", profile.tenant_id)
+    .eq("is_closed", true)
+    .single();
+
+  if (!closedStatus) return { error: "Closed status not configured." };
+
   const { error } = await supabase
     .from("tasks")
     .update({
-      status: "closed",
+      status_id: closedStatus.id,
       closed_at: new Date().toISOString(),
       resolution_notes: resolutionNotes,
     })

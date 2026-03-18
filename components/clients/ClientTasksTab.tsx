@@ -10,7 +10,8 @@ import { Search } from "lucide-react";
 interface Task {
   id: string;
   title: string;
-  status: string;
+  status_id: string;
+  task_statuses: { id: string; name: string; color: string; is_closed: boolean } | null;
   priority: string | null;
   due_date: string | null;
   task_number: number | null;
@@ -35,13 +36,13 @@ export function ClientTasksTab({
 
   const filtered = useMemo(() => {
     return tasks.filter((t) => {
-      if (!showClosed && t.status === "closed") return false;
+      if (!showClosed && t.task_statuses?.is_closed) return false;
       if (query) return t.title.toLowerCase().includes(query.toLowerCase());
       return true;
     });
   }, [tasks, query, showClosed]);
 
-  const closedCount = tasks.filter((t) => t.status === "closed").length;
+  const closedCount = tasks.filter((t) => t.task_statuses?.is_closed).length;
 
   return (
     <div className="space-y-4">
@@ -103,7 +104,7 @@ export function ClientTasksTab({
               >
                 <span className="flex-1 font-medium text-foreground truncate">{task.title}</span>
                 {task.priority && <TaskPriorityBadge priority={task.priority} />}
-                {task.status && <TaskStatusBadge status={task.status} />}
+                {task.task_statuses && <TaskStatusBadge status={task.task_statuses} />}
                 <span className="text-xs text-muted-foreground w-24 text-right shrink-0">
                   {task.due_date ? formatDate(task.due_date) : "No due date"}
                 </span>

@@ -19,7 +19,7 @@ interface Task {
   title: string;
   client_id: string;
   task_number: number | null;
-  status: string;
+  task_statuses: { id: string; name: string; color: string; is_closed: boolean } | null;
 }
 
 interface TimeEntry {

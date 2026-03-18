@@ -3,23 +3,17 @@
 import { useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
-
-const STATUSES = [
-  { value: "", label: "All" },
-  { value: "backlog", label: "Backlog" },
-  { value: "in_progress", label: "In Progress" },
-  { value: "in_review", label: "In Review" },
-  { value: "closed", label: "Closed" },
-];
+import type { TaskStatus } from "@/app/actions/task-statuses";
 
 interface TaskFiltersProps {
   q: string;
   status: string;
+  statuses: TaskStatus[];
   onQChange: (q: string) => void;
   onStatusChange: (status: string) => void;
 }
 
-export function TaskFilters({ q, status, onQChange, onStatusChange }: TaskFiltersProps) {
+export function TaskFilters({ q, status, statuses, onQChange, onStatusChange }: TaskFiltersProps) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function handleSearch(e: React.ChangeEvent<HTMLInputElement>) {
@@ -41,17 +35,27 @@ export function TaskFilters({ q, status, onQChange, onStatusChange }: TaskFilter
         />
       </div>
       <div className="flex items-center gap-1">
-        {STATUSES.map((s) => (
+        <button
+          onClick={() => onStatusChange("")}
+          className={`h-7 rounded-md px-2.5 text-xs transition-colors ${
+            status === ""
+              ? "bg-accent text-accent-foreground font-medium"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted"
+          }`}
+        >
+          All
+        </button>
+        {statuses.map((s) => (
           <button
-            key={s.value}
-            onClick={() => onStatusChange(s.value)}
+            key={s.id}
+            onClick={() => onStatusChange(s.id)}
             className={`h-7 rounded-md px-2.5 text-xs transition-colors ${
-              status === s.value
+              status === s.id
                 ? "bg-accent text-accent-foreground font-medium"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
           >
-            {s.label}
+            {s.name}
           </button>
         ))}
       </div>

@@ -50,7 +50,7 @@ export default async function PortalDashboardPage() {
   const { data: tasks } = clientId
     ? await db
         .from("tasks")
-        .select("id, title, status, priority, due_date, created_at")
+        .select("id, title, status_id, task_statuses(id, name, color, is_closed), priority, due_date, created_at")
         .eq("client_id", clientId)
         .order("created_at", { ascending: false })
     : { data: [] };
@@ -104,7 +104,7 @@ export default async function PortalDashboardPage() {
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <TaskPriorityBadge priority={task.priority} />
-                <TaskStatusBadge status={task.status} />
+                <TaskStatusBadge status={task.task_statuses as any} />
               </div>
             </Link>
           ))}

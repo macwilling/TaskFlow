@@ -31,7 +31,8 @@ export interface ClientForTabs {
 export interface TaskForTabs {
   id: string;
   title: string;
-  status: string;
+  status_id: string;
+  task_statuses: { id: string; name: string; color: string; is_closed: boolean } | null;
   priority: string | null;
   due_date: string | null;
   task_number: number | null;
@@ -70,7 +71,7 @@ interface Props {
   client: ClientForTabs;
   clientKey: string | null;
   billingAddress: string;
-  taskListForModal: { id: string; title: string; client_id: string; task_number: number | null; status: string }[];
+  taskListForModal: { id: string; title: string; client_id: string; task_number: number | null; task_statuses: { id: string; name: string; color: string; is_closed: boolean } | null }[];
   tasks: TaskForTabs[];
   entries: TimeEntryForTabs[];
   totalHours: number;
