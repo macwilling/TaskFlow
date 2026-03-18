@@ -93,8 +93,8 @@ export function ClientTasksTab({
           {filtered.map((task) => {
             const href =
               clientKey && task.task_number != null
-                ? `/tasks/${clientKey}-${task.task_number}`
-                : `/tasks/${task.id}`;
+                ? `/app/tasks/${clientKey}-${task.task_number}`
+                : `/app/tasks/${task.id}`;
             return (
               <Link
                 key={task.id}

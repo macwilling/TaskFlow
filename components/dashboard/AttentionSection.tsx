@@ -33,7 +33,7 @@ export async function AttentionSection() {
       .limit(5),
     supabase
       .from("tasks")
-      .select("id, task_number, title, priority, due_date, clients(name, color)")
+      .select("id, task_number, title, priority, due_date, clients(name, color, client_key)")
       .eq("status", "in_review")
       .order("due_date", { ascending: true, nullsFirst: false })
       .limit(8),
@@ -67,7 +67,7 @@ export async function AttentionSection() {
             return (
               <Link
                 key={inv.id}
-                href={`/app/invoices/${inv.id}`}
+                href={`/app/finance/invoices/${inv.id}`}
                 className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-accent/40 transition-colors"
               >
                 <div className="flex items-center gap-3 min-w-0">
@@ -105,7 +105,7 @@ export async function AttentionSection() {
             return (
               <Link
                 key={task.id}
-                href={`/app/tasks/${task.id}`}
+                href={`/app/tasks/${(task.clients as any)?.client_key}-${task.task_number}`}
                 className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-accent/40 transition-colors"
               >
                 <div className="flex items-center gap-3 min-w-0">

@@ -35,7 +35,7 @@ export async function UpcomingSection() {
   const [{ data: dueTasks }, { data: unbilledEntries }] = await Promise.all([
     supabase
       .from("tasks")
-      .select("id, task_number, title, status, due_date, clients(name, color)")
+      .select("id, task_number, title, status, due_date, clients(name, color, client_key)")
       .neq("status", "closed")
       .gte("due_date", today)
       .lte("due_date", sevenDaysOut)
@@ -43,7 +43,7 @@ export async function UpcomingSection() {
       .limit(8),
     supabase
       .from("time_entries")
-      .select("duration_hours, hourly_rate, clients(id, name, color)")
+      .select("duration_hours, hourly_rate, clients(id, name, color, client_key)")
       .eq("billable", true)
       .eq("billed", false),
   ]);
@@ -53,18 +53,20 @@ export async function UpcomingSection() {
     id: string;
     name: string;
     color: string;
+    client_key: string;
     hours: number;
     value: number;
   };
   const clientMap = new Map<string, ClientSummary>();
   for (const entry of unbilledEntries ?? []) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const client = (entry.clients as any) as { id: string; name: string; color: string } | null;
+    const client = (entry.clients as any) as { id: string; name: string; color: string; client_key: string } | null;
     if (!client) continue;
     const existing = clientMap.get(client.id) ?? {
       id: client.id,
       name: client.name,
       color: client.color,
+      client_key: client.client_key,
       hours: 0,
       value: 0,
     };
@@ -95,7 +97,7 @@ export async function UpcomingSection() {
             return (
               <Link
                 key={task.id}
-                href={`/app/tasks/${task.id}`}
+                href={`/app/tasks/${(task.clients as any)?.client_key}-${task.task_number}`}
                 className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-accent/40 transition-colors"
               >
                 <div className="flex items-center gap-3 min-w-0">
@@ -141,7 +143,7 @@ export async function UpcomingSection() {
             {unbilledByClient.map((c) => (
               <Link
                 key={c.id}
-                href={`/app/clients/${c.id}`}
+                href={`/app/clients/${c.client_key}`}
                 className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-accent/40 transition-colors"
               >
                 <div className="flex items-center gap-3 min-w-0">

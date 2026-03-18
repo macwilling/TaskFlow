@@ -117,7 +117,7 @@ export default async function InvoiceDetailPage({
             <InvoiceStatusBadge status={effectStatus} />
             {isDraft && (
               <Button asChild variant="outline" size="sm" className="h-7 gap-1 text-xs">
-                <Link href={`/app/invoices/${invoiceId}/edit`}>
+                <Link href={`/app/finance/invoices/${invoiceId}/edit`}>
                   <Edit className="h-3.5 w-3.5" />
                   Edit
                 </Link>
