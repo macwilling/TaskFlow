@@ -10,7 +10,7 @@ import {
   Clock,
   FileText,
   BarChart2,
-  Settings,
+  SlidersHorizontal,
   Zap,
   Mail,
   Globe,
@@ -19,6 +19,11 @@ import {
   Palette,
   Receipt,
   AtSign,
+  TrendingUp,
+  CreditCard,
+  UserCog,
+  Server,
+  Bell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -44,22 +49,34 @@ const navConfig: (NavItem | NavGroup)[] = [
   { kind: "item", href: "/app/clients", label: "Clients", icon: Users },
   { kind: "item", href: "/app/tasks", label: "Tasks", icon: CheckSquare },
   { kind: "item", href: "/app/time", label: "Time", icon: Clock },
-  { kind: "item", href: "/app/invoices", label: "Invoices", icon: FileText },
-  { kind: "item", href: "/app/portal-users", label: "Portal Users", icon: Globe },
-  { kind: "item", href: "/app/reports", label: "Reports", icon: BarChart2 },
   {
     kind: "group",
-    label: "Settings",
-    icon: Settings,
-    basePath: "/app/settings",
+    label: "Finance",
+    icon: TrendingUp,
+    basePath: "/app/finance",
     children: [
-      { href: "/app/settings/general",  label: "General",  icon: Building2 },
-      { href: "/app/settings/branding", label: "Branding", icon: Palette },
-      { href: "/app/settings/invoices", label: "Invoices", icon: Receipt },
-      { href: "/app/settings/emails",   label: "Emails",   icon: AtSign },
+      { href: "/app/finance/invoices",  label: "Invoices",  icon: FileText },
+      { href: "/app/finance/reports",   label: "Reports",   icon: BarChart2 },
+      { href: "/app/finance/payments",  label: "Payments",  icon: CreditCard },
     ],
   },
-  { kind: "item", href: "/app/email-log", label: "Email Log", icon: Mail },
+  {
+    kind: "group",
+    label: "Administration",
+    icon: SlidersHorizontal,
+    basePath: "/app/administration",
+    children: [
+      { href: "/app/administration/portal-users",    label: "Portal Users",     icon: Globe },
+      { href: "/app/administration/team",            label: "Team",             icon: UserCog },
+      { href: "/app/administration/general",         label: "General",          icon: Building2 },
+      { href: "/app/administration/branding",        label: "Branding",         icon: Palette },
+      { href: "/app/administration/invoices",        label: "Invoice settings", icon: Receipt },
+      { href: "/app/administration/emails",          label: "Emails",           icon: AtSign },
+      { href: "/app/administration/smtp",            label: "Custom SMTP",      icon: Server },
+      { href: "/app/administration/notifications",   label: "Notifications",    icon: Bell },
+      { href: "/app/administration/email-log",       label: "Email Log",        icon: Mail },
+    ],
+  },
 ];
 
 // ─── NavGroupItem ─────────────────────────────────────────────────────────────

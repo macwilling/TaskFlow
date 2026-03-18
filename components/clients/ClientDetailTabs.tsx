@@ -11,7 +11,6 @@ import { ClientTasksTab } from "@/components/clients/ClientTasksTab";
 import { ClientNotesEditor } from "@/components/clients/ClientNotesEditor";
 import { PortalAccessSection } from "@/components/portal/PortalAccessSection";
 import { InvoiceStatusBadge } from "@/components/invoices/InvoiceStatusBadge";
-import { TaskStatusBadge, TaskPriorityBadge } from "@/components/tasks/TaskStatusBadge";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -351,7 +350,7 @@ export function ClientDetailTabs({
                   </span>
                 )}
                 <Button asChild size="sm" variant="outline" className="h-7 gap-1 text-xs">
-                  <Link href={`/app/invoices/new?clientId=${client.id}`}>New invoice</Link>
+                  <Link href={`/app/finance/invoices/new?clientId=${client.id}`}>New invoice</Link>
                 </Button>
               </div>
             </div>
@@ -360,7 +359,7 @@ export function ClientDetailTabs({
               <p className="text-sm text-muted-foreground">
                 No invoices yet.{" "}
                 <Link
-                  href={`/app/invoices/new?clientId=${client.id}`}
+                  href={`/app/finance/invoices/new?clientId=${client.id}`}
                   className="text-foreground underline-offset-4 hover:underline"
                 >
                   Create an invoice →
@@ -376,7 +375,7 @@ export function ClientDetailTabs({
                   return (
                     <Link
                       key={inv.id}
-                      href={`/app/invoices/${inv.id}`}
+                      href={`/app/finance/invoices/${inv.id}`}
                       className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors text-sm"
                     >
                       <span className="font-medium text-foreground w-24 shrink-0">

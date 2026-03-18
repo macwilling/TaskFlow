@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation";
 import { createClient, getCachedUser } from "@/lib/supabase/server";
-import { InvoiceSettingsForm } from "@/components/settings/InvoiceSettingsForm";
+import { TopBar } from "@/components/layout/TopBar";
+import { PageContainer } from "@/components/layout/PageContainer";
+import { BrandingForm } from "@/components/settings/BrandingForm";
 
-export default async function InvoiceSettingsPage() {
+export default async function BrandingSettingsPage() {
   const [user, supabase] = await Promise.all([getCachedUser(), createClient()]);
   if (!user || user.app_metadata?.role !== "admin") redirect("/auth/login");
 
@@ -26,14 +28,19 @@ export default async function InvoiceSettingsPage() {
   }
 
   return (
-    <div className="max-w-3xl">
-      <section>
-        <h2 className="text-base font-semibold">Invoice settings</h2>
-        <p className="text-sm text-muted-foreground mt-0.5 mb-4">
-          Defaults applied when creating new invoices.
-        </p>
-        <InvoiceSettingsForm settings={settings} />
-      </section>
-    </div>
+    <>
+      <TopBar title="Branding" />
+      <PageContainer>
+        <div className="max-w-3xl">
+          <section>
+            <h2 className="text-base font-semibold">Branding</h2>
+            <p className="text-sm text-muted-foreground mt-0.5 mb-4">
+              Logo and colors shown in the client portal.
+            </p>
+            <BrandingForm tenantId={tenantId} settings={settings} />
+          </section>
+        </div>
+      </PageContainer>
+    </>
   );
 }

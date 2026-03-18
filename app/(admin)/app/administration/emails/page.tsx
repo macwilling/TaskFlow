@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient, getCachedUser } from "@/lib/supabase/server";
+import { TopBar } from "@/components/layout/TopBar";
+import { PageContainer } from "@/components/layout/PageContainer";
 import { EmailTemplatesForm } from "@/components/settings/EmailTemplatesForm";
 
 export default async function EmailSettingsPage() {
@@ -26,14 +28,19 @@ export default async function EmailSettingsPage() {
   }
 
   return (
-    <div className="max-w-3xl">
-      <section>
-        <h2 className="text-base font-semibold">Email templates</h2>
-        <p className="text-sm text-muted-foreground mt-0.5 mb-4">
-          Customize outgoing notification emails.
-        </p>
-        <EmailTemplatesForm settings={settings} />
-      </section>
-    </div>
+    <>
+      <TopBar title="Emails" />
+      <PageContainer>
+        <div className="max-w-3xl">
+          <section>
+            <h2 className="text-base font-semibold">Email templates</h2>
+            <p className="text-sm text-muted-foreground mt-0.5 mb-4">
+              Customize outgoing notification emails.
+            </p>
+            <EmailTemplatesForm settings={settings} />
+          </section>
+        </div>
+      </PageContainer>
+    </>
   );
 }

@@ -32,7 +32,7 @@ function syncUrl(status: string, clientId: string) {
   if (status) params.set("status", status);
   if (clientId) params.set("client", clientId);
   const qs = params.toString();
-  window.history.replaceState(null, "", qs ? `/app/invoices?${qs}` : "/invoices");
+  window.history.replaceState(null, "", qs ? `/app/finance/invoices?${qs}` : "/app/finance/invoices");
 }
 
 export function InvoicesView({ invoices, clients }: { invoices: Invoice[]; clients: Client[] }) {

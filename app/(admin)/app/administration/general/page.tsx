@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { Separator } from "@/components/ui/separator";
 import { createClient, getCachedUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { TopBar } from "@/components/layout/TopBar";
+import { PageContainer } from "@/components/layout/PageContainer";
 import { BusinessInfoForm } from "@/components/settings/BusinessInfoForm";
 import { TenantSlugForm } from "@/components/settings/TenantSlugForm";
 
@@ -28,24 +30,29 @@ export default async function GeneralSettingsPage() {
   }
 
   return (
-    <div className="space-y-10 max-w-3xl">
-      <section>
-        <h2 className="text-base font-semibold">Business information</h2>
-        <p className="text-sm text-muted-foreground mt-0.5 mb-4">
-          Used on invoices and as your business identity.
-        </p>
-        <BusinessInfoForm settings={settings} />
-      </section>
+    <>
+      <TopBar title="General" />
+      <PageContainer>
+        <div className="space-y-10 max-w-3xl">
+          <section>
+            <h2 className="text-base font-semibold">Business information</h2>
+            <p className="text-sm text-muted-foreground mt-0.5 mb-4">
+              Used on invoices and as your business identity.
+            </p>
+            <BusinessInfoForm settings={settings} />
+          </section>
 
-      <Separator />
+          <Separator />
 
-      <section>
-        <h2 className="text-base font-semibold">Portal URL</h2>
-        <p className="text-sm text-muted-foreground mt-0.5 mb-4">
-          The URL your clients use to access their portal.
-        </p>
-        <TenantSlugForm slug={tenant?.slug ?? ""} />
-      </section>
-    </div>
+          <section>
+            <h2 className="text-base font-semibold">Portal URL</h2>
+            <p className="text-sm text-muted-foreground mt-0.5 mb-4">
+              The URL your clients use to access their portal.
+            </p>
+            <TenantSlugForm slug={tenant?.slug ?? ""} />
+          </section>
+        </div>
+      </PageContainer>
+    </>
   );
 }
