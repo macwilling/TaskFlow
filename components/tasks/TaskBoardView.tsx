@@ -1,21 +1,24 @@
-import Link from "next/link";
-import { TaskPriorityBadge } from "./TaskStatusBadge";
+"use client";
 
-interface Task {
-  id: string;
-  task_number: number | null;
-  title: string;
-  status: string;
-  priority: string;
-  due_date: string | null;
-  clients: { name: string; color: string | null; client_key: string | null } | null;
-}
-
-function taskHref(task: Task) {
-  const key = task.clients?.client_key;
-  if (key && task.task_number != null) return `/app/tasks/${key}-${task.task_number}`;
-  return `/app/tasks/${task.id}`;
-}
+import { useState, useEffect } from "react";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  closestCorners,
+  defaultDropAnimationSideEffects,
+  type DragStartEvent,
+  type DragOverEvent,
+  type DragEndEvent,
+  type DropAnimation,
+} from "@dnd-kit/core";
+import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import { updateTaskStatusAction } from "@/app/actions/tasks";
+import { KanbanColumn } from "./KanbanColumn";
+import { TaskCard, type Task } from "./TaskCard";
 
 const COLUMNS = [
   { id: "backlog", label: "Backlog" },
@@ -24,81 +27,121 @@ const COLUMNS = [
   { id: "closed", label: "Closed" },
 ] as const;
 
-function isPastDue(due: string | null, status: string) {
-  if (!due || status === "closed") return false;
-  return new Date(due) < new Date();
-}
+const COLUMN_IDS = COLUMNS.map((c) => c.id);
 
-function formatDate(d: string | null) {
-  if (!d) return null;
-  return new Date(d).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
-}
+const dropAnimation: DropAnimation = {
+  sideEffects: defaultDropAnimationSideEffects({
+    styles: { active: { opacity: "0.4" } },
+  }),
+};
 
-function TaskCard({ task }: { task: Task }) {
-  const overdue = isPastDue(task.due_date, task.status);
-  return (
-    <Link
-      href={taskHref(task)}
-      className="block rounded-md border border-border bg-card p-3 shadow-sm hover:shadow-md hover:border-accent transition-all space-y-2"
-    >
-      {task.clients?.client_key && task.task_number != null && (
-        <p className="font-mono text-[10px] text-muted-foreground">
-          {task.clients.client_key}-{task.task_number}
-        </p>
-      )}
-      <p className="text-sm font-medium text-foreground leading-snug">{task.title}</p>
-      <div className="flex items-center justify-between gap-2">
-        <TaskPriorityBadge priority={task.priority} />
-        {task.clients && (
-          <span className="flex items-center gap-1 text-xs text-muted-foreground truncate max-w-[100px]">
-            <span
-              className="h-1.5 w-1.5 shrink-0 rounded-full"
-              style={{ backgroundColor: task.clients.color ?? "#0969da" }}
-            />
-            {task.clients.name}
-          </span>
-        )}
-      </div>
-      {task.due_date && (
-        <p className={`text-xs ${overdue ? "text-red-600 dark:text-red-400 font-medium" : "text-muted-foreground"}`}>
-          Due {formatDate(task.due_date)}
-        </p>
-      )}
-    </Link>
+export function TaskBoardView({ tasks: initialTasks }: { tasks: Task[] }) {
+  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [dragStartStatus, setDragStartStatus] = useState<string | null>(null);
+
+  // Sync when RSC re-renders with fresh data after revalidatePath
+  useEffect(() => {
+    setTasks(initialTasks);
+  }, [initialTasks]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        // Must move 8px before drag activates — clicks still navigate via <Link>
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
   );
-}
 
-export function TaskBoardView({ tasks }: { tasks: Task[] }) {
+  function handleDragStart({ active }: DragStartEvent) {
+    const task = tasks.find((t) => t.id === active.id);
+    setActiveTask(task ?? null);
+    setDragStartStatus(task?.status ?? null);
+  }
+
+  function handleDragOver({ active, over }: DragOverEvent) {
+    if (!over) return;
+    const activeId = active.id as string;
+    const overId = over.id as string;
+
+    // Resolve target column: overId is either a column id or a task id
+    const targetCol = COLUMN_IDS.includes(overId as (typeof COLUMN_IDS)[number])
+      ? overId
+      : tasks.find((t) => t.id === overId)?.status;
+
+    if (!targetCol) return;
+
+    setTasks((prev) =>
+      prev.map((t) => (t.id === activeId ? { ...t, status: targetCol } : t))
+    );
+  }
+
+  async function handleDragEnd({ active }: DragEndEvent) {
+    setActiveTask(null);
+
+    const task = tasks.find((t) => t.id === active.id);
+    if (!task) return;
+
+    // No column change — nothing to persist
+    if (task.status === dragStartStatus) {
+      setDragStartStatus(null);
+      return;
+    }
+
+    setDragStartStatus(null);
+
+    // Snapshot for rollback
+    const snapshot = [...tasks];
+
+    const result = await updateTaskStatusAction(task.id, task.status);
+    if (result?.error) {
+      setTasks(snapshot);
+    }
+  }
+
+  function handleDragCancel() {
+    // Restore original status if drag is cancelled
+    if (activeTask && dragStartStatus) {
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === activeTask.id ? { ...t, status: dragStartStatus } : t
+        )
+      );
+    }
+    setActiveTask(null);
+    setDragStartStatus(null);
+  }
+
   const byStatus = Object.fromEntries(
-    COLUMNS.map((col) => [
-      col.id,
-      tasks.filter((t) => t.status === col.id),
-    ])
+    COLUMNS.map((col) => [col.id, tasks.filter((t) => t.status === col.id)])
   );
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 min-h-[400px]">
-      {COLUMNS.map((col) => {
-        const colTasks = byStatus[col.id] ?? [];
-        return (
-          <div key={col.id} className="flex flex-col gap-2">
-            <div className="flex items-center justify-between px-1">
-              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                {col.label}
-              </span>
-              <span className="text-xs text-muted-foreground">{colTasks.length}</span>
-            </div>
-            <div className="flex-1 rounded-md bg-muted/30 p-2 space-y-2 min-h-[200px]">
-              {colTasks.map((task) => (
-                <TaskCard key={task.id} task={task} />
-              ))}
-            </div>
-          </div>
-        );
-      })}
-    </div>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCorners}
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
+    >
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 min-h-[400px]">
+        {COLUMNS.map((col) => (
+          <KanbanColumn
+            key={col.id}
+            column={col}
+            tasks={byStatus[col.id] ?? []}
+          />
+        ))}
+      </div>
+
+      <DragOverlay dropAnimation={dropAnimation}>
+        {activeTask ? <TaskCard task={activeTask} isOverlay /> : null}
+      </DragOverlay>
+    </DndContext>
   );
 }
