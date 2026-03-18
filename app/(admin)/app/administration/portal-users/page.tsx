@@ -153,7 +153,7 @@ async function PortalUsersTable() {
                   {formatDate((row as { last_seen_at?: string | null }).last_seen_at ?? null) ?? "Never"}
                 </td>
                 <td className="pr-3">
-                  <Link href={`/clients/${row.client_id}`}>
+                  <Link href={`/app/clients/${client?.client_key ?? row.client_id}`}>
                     <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                   </Link>
                 </td>
