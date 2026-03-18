@@ -101,6 +101,7 @@ async function deleteTenant(tid: string) {
   await admin.from("comments").delete().eq("tenant_id", tid);
   await admin.from("task_attachments").delete().eq("tenant_id", tid);
   await admin.from("tasks").delete().eq("tenant_id", tid);
+  await admin.from("task_statuses").delete().eq("tenant_id", tid);
   await admin.from("clients").delete().eq("tenant_id", tid);
   await admin.from("email_log").delete().eq("tenant_id", tid);
   await admin.from("tenant_settings").delete().eq("tenant_id", tid);
@@ -337,6 +338,18 @@ async function seed() {
 
   // ── Step 4: tasks ─────────────────────────────────────────────────────────
   console.log("\n4/7  Tasks (18 tasks)");
+
+  // Look up the default task statuses seeded by the DB trigger
+  const { data: statusRows, error: statusErr } = await admin
+    .from("task_statuses")
+    .select("id, name, is_closed, is_default")
+    .eq("tenant_id", tenantId);
+  if (statusErr) throw new Error(`task_statuses lookup: ${statusErr.message}`);
+  const statusId = (name: string) => {
+    const s = statusRows?.find((r) => r.name.toLowerCase().replace(/ /g, "_") === name);
+    if (!s) throw new Error(`No task status found for "${name}"`);
+    return s.id as string;
+  };
 
   const taskRows = [
     // ─── Covenant Community Church (CCC) ────────────────────────────────────
@@ -630,7 +643,11 @@ async function seed() {
   const tasks = assertOk(
     await admin
       .from("tasks")
-      .insert(taskRows.map((t) => ({ ...t, tenant_id: tenantId })))
+      .insert(taskRows.map(({ status, ...t }) => ({
+        ...t,
+        tenant_id: tenantId,
+        status_id: statusId(status),
+      })))
       .select("id, client_id, task_number"),
     "insert tasks"
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
