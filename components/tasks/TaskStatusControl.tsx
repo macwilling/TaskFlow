@@ -76,7 +76,7 @@ export function TaskStatusControl({
         <DropdownMenuTrigger
           disabled={isPending}
           className={cn(
-            "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium transition-opacity",
+            "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium whitespace-nowrap transition-opacity",
             "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
             "disabled:opacity-50",
             config.className

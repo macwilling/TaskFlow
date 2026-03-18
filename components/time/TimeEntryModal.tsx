@@ -254,7 +254,7 @@ export function TimeEntryModal({
                             <span className="text-muted-foreground font-mono text-xs shrink-0">{issueKey}</span>
                           )}
                           <span className="truncate">{t.title}</span>
-                          <TaskStatusBadge status={t.status} />
+                          <TaskStatusBadge status={t.status} className="shrink-0" />
                         </span>
                       </SelectItem>
                     );
