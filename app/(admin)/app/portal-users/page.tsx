@@ -46,7 +46,7 @@ async function PortalUsersTable() {
   const clientIds = rows.map((r) => r.client_id);
   const { data: clients } = await supabase
     .from("clients")
-    .select("id, name, email, color")
+    .select("id, name, email, color, client_key")
     .in("id", clientIds);
   const clientMap = new Map(
     (clients ?? []).map((c) => [c.id, c])
@@ -107,7 +107,7 @@ async function PortalUsersTable() {
               >
                 <td className="px-4 py-3">
                   <Link
-                    href={`/clients/${row.client_id}`}
+                    href={`/app/clients/${client?.client_key ?? row.client_id}`}
                     className="flex items-center gap-2.5"
                   >
                     <span

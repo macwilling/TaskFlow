@@ -38,7 +38,7 @@ export default async function EditInvoicePage({
 
   // Guard: only draft invoices can be edited
   if (invoice.status !== "draft") {
-    redirect(`/invoices/${invoiceId}`);
+    redirect(`/app/invoices/${invoiceId}`);
   }
 
   let keyCounter = 0;

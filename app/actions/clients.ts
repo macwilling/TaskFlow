@@ -96,13 +96,13 @@ export async function createClientAction(
   const { data, error } = await supabase
     .from("clients")
     .insert({ tenant_id: profile.tenant_id, ...buildClientPayload(fields) })
-    .select("id")
+    .select("id, client_key")
     .single();
 
   if (error) return { error: error.message };
 
   revalidatePath("/app/clients");
-  redirect(`/clients/${data.id}`);
+  redirect(`/app/clients/${data.client_key}`);
 }
 
 export async function updateClientAction(
@@ -166,9 +166,10 @@ export async function updateClientAction(
     }
   }
 
-  revalidatePath(`/clients/${clientId}`);
+  const newClientKey = fields.client_key.trim().toUpperCase();
+  revalidatePath(`/app/clients/${newClientKey}`);
   revalidatePath("/app/clients");
-  redirect(`/clients/${clientId}`);
+  redirect(`/app/clients/${newClientKey}`);
 }
 
 export async function updateClientNotesAction(
@@ -184,14 +185,14 @@ export async function updateClientNotesAction(
     return { error: "Unauthorized." };
   }
 
-  const { error } = await supabase
-    .from("clients")
-    .update({ notes: notes.trim() || null })
-    .eq("id", clientId);
+  const [{ error }, { data: clientRow }] = await Promise.all([
+    supabase.from("clients").update({ notes: notes.trim() || null }).eq("id", clientId),
+    supabase.from("clients").select("client_key").eq("id", clientId).single(),
+  ]);
 
   if (error) return { error: error.message };
 
-  revalidatePath(`/clients/${clientId}`);
+  if (clientRow?.client_key) revalidatePath(`/app/clients/${clientRow.client_key}`);
   return {};
 }
 
@@ -203,11 +204,11 @@ export async function archiveClientAction(clientId: string, archive: boolean) {
 
   if (!user || user.app_metadata?.role !== "admin") return;
 
-  await supabase
-    .from("clients")
-    .update({ is_archived: archive })
-    .eq("id", clientId);
+  const [, { data: clientRow }] = await Promise.all([
+    supabase.from("clients").update({ is_archived: archive }).eq("id", clientId),
+    supabase.from("clients").select("client_key").eq("id", clientId).single(),
+  ]);
 
-  revalidatePath(`/clients/${clientId}`);
+  if (clientRow?.client_key) revalidatePath(`/app/clients/${clientRow.client_key}`);
   revalidatePath("/app/clients");
 }

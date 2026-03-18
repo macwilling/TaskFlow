@@ -349,7 +349,7 @@ export default async function TaskDetailPage({
                           style={{ backgroundColor: client.color ?? "#0969da" }}
                         />
                         <Link
-                          href={`/clients/${client.id}`}
+                          href={`/app/clients/${client.client_key ?? client.id}`}
                           className="hover:underline text-foreground"
                         >
                           {client.name}

@@ -133,7 +133,7 @@ export async function createInvoiceAction(
   if (itemsError) return { error: itemsError.message };
 
   revalidatePath("/app/invoices");
-  redirect(`/invoices/${invoice.id}`);
+  redirect(`/app/invoices/${invoice.id}`);
 }
 
 // ─── Update (draft only) ──────────────────────────────────────────────────────
@@ -225,8 +225,8 @@ export async function updateInvoiceAction(
   if (itemsError) return { error: itemsError.message };
 
   revalidatePath("/app/invoices");
-  revalidatePath(`/invoices/${invoiceId}`);
-  redirect(`/invoices/${invoiceId}`);
+  revalidatePath(`/app/invoices/${invoiceId}`);
+  redirect(`/app/invoices/${invoiceId}`);
 }
 
 // ─── Send ─────────────────────────────────────────────────────────────────────
@@ -286,7 +286,7 @@ export async function sendInvoiceAction(invoiceId: string): Promise<{ error?: st
   }
 
   revalidatePath("/app/invoices");
-  revalidatePath(`/invoices/${invoiceId}`);
+  revalidatePath(`/app/invoices/${invoiceId}`);
   return {};
 }
 
@@ -358,7 +358,7 @@ export async function recordPaymentAction(
     .eq("id", invoiceId);
 
   revalidatePath("/app/invoices");
-  revalidatePath(`/invoices/${invoiceId}`);
+  revalidatePath(`/app/invoices/${invoiceId}`);
   return {};
 }
 
@@ -430,6 +430,6 @@ export async function deletePaymentAction(
     .eq("id", invoiceId);
 
   revalidatePath("/app/invoices");
-  revalidatePath(`/invoices/${invoiceId}`);
+  revalidatePath(`/app/invoices/${invoiceId}`);
   return {};
 }

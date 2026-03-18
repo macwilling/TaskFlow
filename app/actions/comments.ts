@@ -69,7 +69,7 @@ export async function createCommentAction(
   });
 
   const slug = await getTaskSlug(supabase, taskId);
-  revalidatePath(`/tasks/${slug}`);
+  revalidatePath(`/app/tasks/${slug}`);
 
   const tenantSlug = user.app_metadata?.tenant_slug as string | undefined;
   if (tenantSlug) revalidatePath(`/portal/${tenantSlug}/tasks/${taskId}`);
@@ -109,7 +109,7 @@ export async function updateCommentAction(
   if (error) return { error: error.message };
 
   const slug = await getTaskSlug(supabase, taskId);
-  revalidatePath(`/tasks/${slug}`);
+  revalidatePath(`/app/tasks/${slug}`);
 
   const tenantSlug = user.app_metadata?.tenant_slug as string | undefined;
   if (tenantSlug) revalidatePath(`/portal/${tenantSlug}/tasks/${taskId}`);
@@ -137,7 +137,7 @@ export async function deleteCommentAction(
   if (error) return { error: error.message };
 
   const slug = await getTaskSlug(supabase, taskId);
-  revalidatePath(`/tasks/${slug}`);
+  revalidatePath(`/app/tasks/${slug}`);
 
   const tenantSlug = user.app_metadata?.tenant_slug as string | undefined;
   if (tenantSlug) revalidatePath(`/portal/${tenantSlug}/tasks/${taskId}`);

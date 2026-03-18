@@ -13,10 +13,10 @@ export default async function ClientDetailPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ clientId: string }>;
+  params: Promise<{ clientKey: string }>;
   searchParams: Promise<{ tab?: string }>;
 }) {
-  const { clientId } = await params;
+  const { clientKey } = await params;
   const { tab: tabParam } = await searchParams;
   const initialTab: TabKey = (["overview", "tasks", "time", "invoices"] as string[]).includes(
     tabParam ?? ""
@@ -26,14 +26,23 @@ export default async function ClientDetailPage({
 
   const supabase = await createClient();
 
+  // First fetch client by key, then parallel-fetch related data
+  const { data: client, error } = await supabase
+    .from("clients")
+    .select("*")
+    .eq("client_key", clientKey)
+    .single();
+
+  if (error || !client) notFound();
+
+  const clientId = client.id;
+
   const [
-    { data: client, error },
     { data: portalAccess },
     { data: tasks },
     { data: timeEntries },
     { data: invoices },
   ] = await Promise.all([
-    supabase.from("clients").select("*").eq("id", clientId).single(),
     supabase
       .from("client_portal_access")
       .select("accepted_at, invited_at, last_seen_at, user_id")
@@ -55,8 +64,6 @@ export default async function ClientDetailPage({
       .eq("client_id", clientId)
       .order("issue_date", { ascending: false }),
   ]);
-
-  if (error || !client) notFound();
 
   let portalEmail: string | null = null;
   if (portalAccess?.user_id) {
@@ -90,7 +97,6 @@ export default async function ClientDetailPage({
     .filter((inv) => inv.status !== "paid" && inv.status !== "draft")
     .reduce((s, inv) => s + (Number(inv.total ?? 0) - Number(inv.amount_paid ?? 0)), 0);
 
-  const clientKey = (client as unknown as { client_key: string | null }).client_key;
   const taskListForModal = (tasks ?? [])
     .filter((t) => t.status !== "closed")
     .map((t) => ({
@@ -110,7 +116,7 @@ export default async function ClientDetailPage({
           <div className="flex items-center gap-2">
             <ArchiveClientButton clientId={client.id} isArchived={client.is_archived} />
             <Button asChild size="sm" className="h-7 gap-1 text-xs">
-              <Link href={`/clients/${client.id}/edit`}>
+              <Link href={`/app/clients/${clientKey}/edit`}>
                 <Pencil className="h-3.5 w-3.5" />
                 Edit
               </Link>
@@ -155,7 +161,7 @@ export default async function ClientDetailPage({
           }
           portalEmail={portalEmail}
           initialTab={initialTab}
-          baseUrl={`/clients/${clientId}`}
+          baseUrl={`/app/clients/${clientKey}`}
         />
       </PageContainer>
     </>
