@@ -19,7 +19,7 @@ async function ClientTable({ q, archived }: { q?: string; archived?: string; }) 
 
   let query = supabase
     .from("clients")
-    .select("id, name, company, email, default_rate, payment_terms, currency, color, is_archived")
+    .select("id, name, company, email, default_rate, payment_terms, currency, color, is_archived, client_key")
     .order("name");
 
   if (q) {
@@ -48,7 +48,7 @@ async function ClientTable({ q, archived }: { q?: string; archived?: string; }) 
               Create your first client to get started.
             </p>
             <Button asChild size="sm" className="mt-4 h-8 gap-1.5 text-xs">
-              <Link href="/clients/new">
+              <Link href="/app/clients/new">
                 <Plus className="h-3.5 w-3.5" />
                 New client
               </Link>
@@ -79,7 +79,7 @@ async function ClientTable({ q, archived }: { q?: string; archived?: string; }) 
               className="group hover:bg-muted/30 transition-colors"
             >
               <td className="px-4 py-3">
-                <Link href={`/clients/${client.id}`} className="flex items-center gap-2.5">
+                <Link href={`/app/clients/${client.client_key}`} className="flex items-center gap-2.5">
                   {/* Color swatch */}
                   <span
                     className="h-2 w-2 shrink-0 rounded-full"
@@ -120,7 +120,7 @@ async function ClientTable({ q, archived }: { q?: string; archived?: string; }) 
                 </td>
               )}
               <td className="pr-3">
-                <Link href={`/clients/${client.id}`}>
+                <Link href={`/app/clients/${client.client_key}`}>
                   <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                 </Link>
               </td>
@@ -145,7 +145,7 @@ export default async function ClientsPage({
         title="Clients"
         actions={
           <Button asChild size="sm" className="h-7 gap-1 text-xs">
-            <Link href="/clients/new">
+            <Link href="/app/clients/new">
               <Plus className="h-3.5 w-3.5" />
               New client
             </Link>

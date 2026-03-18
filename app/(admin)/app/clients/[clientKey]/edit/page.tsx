@@ -8,21 +8,21 @@ import { updateClientAction } from "@/app/actions/clients";
 export default async function EditClientPage({
   params,
 }: {
-  params: Promise<{ clientId: string }>;
+  params: Promise<{ clientKey: string }>;
 }) {
-  const { clientId } = await params;
+  const { clientKey } = await params;
   const supabase = await createClient();
 
   const { data: client, error } = await supabase
     .from("clients")
     .select("*")
-    .eq("id", clientId)
+    .eq("client_key", clientKey)
     .single();
 
   if (error || !client) notFound();
 
-  // Bind the clientId into the action
-  const action = updateClientAction.bind(null, clientId);
+  // Bind the UUID into the action (URL uses client_key, mutation uses UUID)
+  const action = updateClientAction.bind(null, client.id);
 
   return (
     <>
@@ -34,7 +34,7 @@ export default async function EditClientPage({
         <ClientForm
           action={action}
           client={client}
-          cancelHref={`/clients/${clientId}`}
+          cancelHref={`/app/clients/${clientKey}`}
         />
       </PageContainer>
     </>

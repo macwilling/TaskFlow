@@ -74,7 +74,7 @@ export async function createTimeEntryAction(
   revalidatePath("/app/time");
   if (input.task_id) {
     const slug = await getTaskSlug(supabase, input.task_id);
-    revalidatePath(`/tasks/${slug}`);
+    revalidatePath(`/app/tasks/${slug}`);
   }
   return { id: data.id };
 }
@@ -113,7 +113,7 @@ export async function updateTimeEntryAction(
   revalidatePath("/app/time");
   if (input.task_id) {
     const slug = await getTaskSlug(supabase, input.task_id);
-    revalidatePath(`/tasks/${slug}`);
+    revalidatePath(`/app/tasks/${slug}`);
   }
   return {};
 }
@@ -167,7 +167,7 @@ export async function deleteTimeEntryAction(
   revalidatePath("/app/time");
   if (taskId) {
     const slug = await getTaskSlug(supabase, taskId);
-    revalidatePath(`/tasks/${slug}`);
+    revalidatePath(`/app/tasks/${slug}`);
   }
   return {};
 }

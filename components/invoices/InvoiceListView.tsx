@@ -70,7 +70,7 @@ export function InvoiceListView({ invoices }: { invoices: Invoice[] }) {
               <tr key={inv.id} className="group hover:bg-muted/30 transition-colors">
                 <td className="px-4 py-3">
                   <Link
-                    href={`/invoices/${inv.id}`}
+                    href={`/app/finance/invoices/${inv.id}`}
                     className="font-mono text-xs font-medium text-foreground hover:underline"
                   >
                     {inv.invoice_number}
@@ -98,7 +98,7 @@ export function InvoiceListView({ invoices }: { invoices: Invoice[] }) {
                   <InvoiceStatusBadge status={status} />
                 </td>
                 <td className="pr-3">
-                  <Link href={`/invoices/${inv.id}`}>
+                  <Link href={`/app/finance/invoices/${inv.id}`}>
                     <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                   </Link>
                 </td>

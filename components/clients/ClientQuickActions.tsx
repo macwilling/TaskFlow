@@ -50,7 +50,7 @@ export function ClientQuickActions({ clientId, clientName, clientKey, clientDefa
     <>
       <div className="flex items-center gap-2">
         <Button asChild size="sm" variant="outline" className="h-7 gap-1 text-xs">
-          <Link href={`/tasks/new?clientId=${clientId}`}>
+          <Link href={`/app/tasks/new?clientId=${clientId}`}>
             <Plus className="h-3.5 w-3.5" />
             New task
           </Link>
@@ -65,7 +65,9 @@ export function ClientQuickActions({ clientId, clientName, clientKey, clientDefa
           Log time
         </Button>
         <Button asChild size="sm" variant="outline" className="h-7 gap-1 text-xs">
+
           <Link href={`/app/finance/invoices/new?clientId=${clientId}`}>
+
             <FileText className="h-3.5 w-3.5" />
             New invoice
           </Link>

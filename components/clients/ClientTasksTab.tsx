@@ -67,7 +67,7 @@ export function ClientTasksTab({
           </Button>
         )}
         <Button asChild size="sm" variant="outline" className="h-8 gap-1 text-xs ml-auto">
-          <Link href={`/tasks/new?clientId=${clientId}`}>New task</Link>
+          <Link href={`/app/tasks/new?clientId=${clientId}`}>New task</Link>
         </Button>
       </div>
 
@@ -80,7 +80,7 @@ export function ClientTasksTab({
             <>
               No active tasks.{" "}
               <Link
-                href={`/tasks/new?clientId=${clientId}`}
+                href={`/app/tasks/new?clientId=${clientId}`}
                 className="text-foreground underline-offset-4 hover:underline"
               >
                 Create one →

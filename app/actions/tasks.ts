@@ -91,7 +91,7 @@ export async function createTaskAction(
       : data.id;
 
   revalidatePath("/app/tasks");
-  redirect(`/tasks/${slug}`);
+  redirect(`/app/tasks/${slug}`);
 }
 
 // ─── Update title (inline edit) ──────────────────────────────────────────────
@@ -120,7 +120,7 @@ export async function updateTaskTitleAction(
   if (error) return { error: error.message };
 
   const slug = await getTaskSlug(supabase, taskId);
-  revalidatePath(`/tasks/${slug}`);
+  revalidatePath(`/app/tasks/${slug}`);
   revalidatePath("/app/tasks");
   return {};
 }
@@ -163,7 +163,7 @@ export async function updateTaskMetaAction(
   if (error) return { error: error.message };
 
   const slug = await getTaskSlug(supabase, taskId);
-  revalidatePath(`/tasks/${slug}`);
+  revalidatePath(`/app/tasks/${slug}`);
   revalidatePath("/app/tasks");
   return {};
 }
@@ -192,7 +192,7 @@ export async function updateTaskContentAction(
   if (error) return { error: error.message };
 
   const slug = await getTaskSlug(supabase, taskId);
-  revalidatePath(`/tasks/${slug}`);
+  revalidatePath(`/app/tasks/${slug}`);
   return {};
 }
 
@@ -226,7 +226,7 @@ export async function updateTaskStatusAction(
   if (error) return { error: error.message };
 
   const slug = await getTaskSlug(supabase, taskId);
-  revalidatePath(`/tasks/${slug}`);
+  revalidatePath(`/app/tasks/${slug}`);
   revalidatePath("/app/tasks");
   return {};
 }
@@ -270,7 +270,7 @@ export async function closeTaskAction(
   }
 
   const slug = await getTaskSlug(supabase, taskId);
-  revalidatePath(`/tasks/${slug}`);
+  revalidatePath(`/app/tasks/${slug}`);
   revalidatePath("/app/tasks");
   return {};
 }
@@ -340,7 +340,7 @@ export async function saveAttachmentAction(params: {
   });
 
   const slug = await getTaskSlug(supabase, params.taskId);
-  revalidatePath(`/tasks/${slug}`);
+  revalidatePath(`/app/tasks/${slug}`);
   return {};
 }
 
@@ -386,6 +386,6 @@ export async function deleteAttachmentAction(
   }
 
   const slug = await getTaskSlug(supabase, taskId);
-  revalidatePath(`/tasks/${slug}`);
+  revalidatePath(`/app/tasks/${slug}`);
   return {};
 }

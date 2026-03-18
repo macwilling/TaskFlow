@@ -132,8 +132,10 @@ export async function createInvoiceAction(
 
   if (itemsError) return { error: itemsError.message };
 
+
   revalidatePath("/app/finance/invoices");
   redirect(`/app/finance/invoices/${invoice.id}`);
+
 }
 
 // ─── Update (draft only) ──────────────────────────────────────────────────────
@@ -224,9 +226,11 @@ export async function updateInvoiceAction(
 
   if (itemsError) return { error: itemsError.message };
 
+
   revalidatePath("/app/finance/invoices");
   revalidatePath(`/app/finance/invoices/${invoiceId}`);
   redirect(`/app/finance/invoices/${invoiceId}`);
+
 }
 
 // ─── Send ─────────────────────────────────────────────────────────────────────
@@ -285,8 +289,10 @@ export async function sendInvoiceAction(invoiceId: string): Promise<{ error?: st
     // Email failure should not block the send action
   }
 
+
   revalidatePath("/app/finance/invoices");
   revalidatePath(`/app/finance/invoices/${invoiceId}`);
+
   return {};
 }
 
@@ -357,8 +363,10 @@ export async function recordPaymentAction(
     })
     .eq("id", invoiceId);
 
+
   revalidatePath("/app/finance/invoices");
   revalidatePath(`/app/finance/invoices/${invoiceId}`);
+
   return {};
 }
 
@@ -429,7 +437,9 @@ export async function deletePaymentAction(
     })
     .eq("id", invoiceId);
 
+
   revalidatePath("/app/finance/invoices");
   revalidatePath(`/app/finance/invoices/${invoiceId}`);
+
   return {};
 }
