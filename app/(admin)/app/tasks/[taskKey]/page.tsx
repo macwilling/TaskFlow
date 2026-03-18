@@ -102,11 +102,28 @@ async function CommentsPanel({
     .eq("task_id", taskId)
     .order("created_at", { ascending: true });
 
+  const authorIds = [...new Set((comments ?? []).map((c) => c.author_id))];
+  let authorNames: Record<string, string> = {};
+  if (authorIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, full_name")
+      .in("id", authorIds);
+    authorNames = Object.fromEntries(
+      (profiles ?? []).map((p) => [p.id, p.full_name ?? ""])
+    );
+  }
+
+  const commentsWithNames = (comments ?? []).map((c) => ({
+    ...c,
+    author_name: authorNames[c.author_id] ?? "",
+  }));
+
   return (
     <CommentThread
       taskId={taskId}
       currentUserId={currentUserId}
-      comments={comments ?? []}
+      comments={commentsWithNames}
     />
   );
 }

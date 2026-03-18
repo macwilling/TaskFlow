@@ -15,8 +15,8 @@ interface Task {
 
 function taskHref(task: Task) {
   const key = task.clients?.client_key;
-  if (key && task.task_number != null) return `/tasks/${key}-${task.task_number}`;
-  return `/tasks/${task.id}`;
+  if (key && task.task_number != null) return `/app/tasks/${key}-${task.task_number}`;
+  return `/app/tasks/${task.id}`;
 }
 
 function formatDate(d: string | null) {
