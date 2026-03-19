@@ -1,7 +1,9 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { createClient, getCachedUser } from "@/lib/supabase/server";
+import { getCachedUser } from "@/lib/supabase/server";
 import { Sidebar } from "@/components/layout/Sidebar";
-import { UserMenu } from "@/components/layout/UserMenu";
+import { UserMenuAsync } from "@/components/layout/UserMenuAsync";
+import { UserMenuSkeleton } from "@/components/layout/UserMenuSkeleton";
 import { SidebarShell } from "@/components/layout/SidebarShell";
 
 export default async function AdminLayout({
@@ -9,27 +11,21 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [user, supabase] = await Promise.all([getCachedUser(), createClient()]);
+  const user = await getCachedUser();
 
   if (!user || user.app_metadata?.role !== "admin") {
     redirect("/auth/login");
   }
 
-  // Fetch the profile for display name
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name")
-    .eq("id", user.id)
-    .single();
+  const email = user.email ?? "";
 
   return (
     <SidebarShell
       sidebar={<Sidebar />}
       userMenu={
-        <UserMenu
-          email={user.email ?? ""}
-          name={profile?.full_name ?? undefined}
-        />
+        <Suspense fallback={<UserMenuSkeleton email={email} />}>
+          <UserMenuAsync userId={user.id} email={email} />
+        </Suspense>
       }
     >
       {children}
