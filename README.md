@@ -1,18 +1,20 @@
 # TaskFlow
 
-A multi-tenant SaaS platform for independent consultants to manage clients, tasks, time tracking, and invoicing — with a dedicated client-facing portal.
+A multi-tenant SaaS platform for independent consultants — manage clients, tasks, time tracking, and invoicing with a dedicated client-facing portal.
 
-Built with Next.js 16 App Router, Supabase, and a fully type-safe stack. Each tenant (consultant) gets their own isolated workspace with row-level security enforced at the database layer.
+Built with Next.js 16 App Router, Supabase, and Cloudflare R2. Each tenant gets a fully isolated workspace with row-level security enforced at the database layer.
+
+---
 
 ## Features
 
 ### Client & Task Management
 - **Client workspace** — manage clients with color coding, contact info, and per-client task lists
 - **Task management** — Jira-style scoped task keys (`PROJ-1`, `PROJ-2`), full rich-text descriptions, file attachments, and inline time entry editing
-- **Custom task statuses** — per-tenant configurable statuses with custom colors and ordering; one marked as default, one as closed
-- **Kanban board** — drag-and-drop card view across all statuses; horizontal scroll with sticky column headers
-- **Task audit log** — immutable history of status changes, title edits, and content changes with actor and timestamp
-- **Milkdown Crepe editor** — WYSIWYG markdown with slash commands (`/`), floating toolbar, inline image upload to R2
+- **Custom task statuses** — per-tenant configurable statuses with custom colors and ordering
+- **Kanban board** — drag-and-drop card view across all statuses
+- **Task audit log** — immutable history of status changes, title edits, and content changes
+- **Milkdown Crepe editor** — WYSIWYG markdown with slash commands, floating toolbar, and inline image upload
 
 ### Time Tracking
 - **FullCalendar view** — monthly/weekly calendar of all logged time entries
@@ -20,36 +22,30 @@ Built with Next.js 16 App Router, Supabase, and a fully type-safe stack. Each te
 - **Client + billable filters** — slice time entries by client or billing status
 
 ### Invoicing
-- **Invoice builder** — select unbilled time entries per client, set rates, add line items
-- **PDF generation** — server-rendered PDF via `@react-pdf/renderer`, streamed on demand (no caching)
+- **Invoice builder** — select unbilled time entries per client, set rates, add manual line items
+- **PDF generation** — server-rendered PDF via `@react-pdf/renderer`, streamed on demand
 - **Status lifecycle** — draft → sent → viewed → paid; overdue computed dynamically
-- **Atomic invoice numbers** — `claim_invoice_number()` Postgres function prevents race conditions
+- **Atomic invoice numbers** — `claim_invoice_number()` Postgres function prevents race conditions under concurrent requests
 
 ### Client Portal
-- **Portal auth** — clients sign in via magic link or Google OAuth; matched to their client record by email
+- **Portal auth** — clients sign in via magic link or Google OAuth; matched to their account by email
 - **Task visibility** — clients see their own tasks and can submit new requests
-- **Invoice visibility** — clients see sent/viewed/paid invoices and line item breakdowns (drafts hidden)
+- **Invoice visibility** — clients see sent/viewed/paid invoices and line item breakdowns
 - **Comments** — clients can add, edit, and delete their own comments on tasks
 
 ### Settings & Reports
-- **Business settings** — name, logo, address, contact info
-- **Branding** — primary/accent color with live preview
+- **Business settings** — name, logo, address, contact info, branding colors
 - **Invoice settings** — number prefix, default tax rate, payment terms, payment method options
-- **Email templates** — customisable subject + body for task-closed, invoice, and comment emails; custom SMTP option
+- **Email templates** — customisable subject/body for all outgoing emails; custom SMTP option
 - **Reports** — revenue and time summaries by client and date range
 
-### Auth & Multi-tenancy
-- **Three auth methods** — email/password, magic link, Google OAuth
-- **Two-role model** — `admin` (consultant) and `client` (portal access), stored in JWT `app_metadata`
-- **Full RLS isolation** — every table scoped by `tenant_id`; policies use `SECURITY DEFINER` helpers to avoid per-row DB joins
-
 ### UX
-- **Optimistic UI** — instant feedback on status changes with background server sync
-- **Loading skeletons** — skeleton screens on all data-heavy pages for perceived performance
-- **Dark mode** — first-class dark mode via CSS variables; toggle in sidebar footer; respects system preference with no flash
+- **Dark mode** — first-class dark mode via CSS variables, respects system preference with no flash
 - **Mobile responsive** — hamburger sidebar on mobile, horizontal-scroll tables, single-column kanban
-- **Email audit log** — read-only table of all sent emails at `/email-log`
+- **Loading skeletons** — skeleton screens on all data-heavy pages
 - **Error boundaries** — `error.tsx` and `not-found.tsx` at the route-segment level
+
+---
 
 ## Tech Stack
 
@@ -66,147 +62,62 @@ Built with Next.js 16 App Router, Supabase, and a fully type-safe stack. Each te
 | Hosting | Vercel |
 | DNS | Cloudflare |
 
-## Architecture Highlights
+---
 
-- **Middleware as `proxy.ts`** — Next.js 16 renames `middleware.ts`; exports `proxy` instead of `middleware`
-- **Three Supabase clients** — browser client, server client (cookies), and admin client (service role / bypass RLS)
-- **`params` / `searchParams` are Promises** in all pages and layouts — always awaited before use
-- **`ssr: false` must live in a `"use client"` wrapper** — Next.js 16 forbids `next/dynamic` with `ssr: false` in Server Components
-- **R2 checksum fix** — `requestChecksumCalculation: "WHEN_REQUIRED"` on the S3Client (AWS SDK v3 sends CRC32 by default, which R2 rejects)
-- **Hydration-safe dates** — all `toLocaleString` calls pin to `"en-US"` to keep server/client output identical
-
-## Project Structure
-
-```
-app/
-  (admin)/          Admin app — dashboard, clients, tasks, time, invoices, settings, reports
-  portal/           Client-facing portal — scoped by /portal/[tenantSlug]
-  auth/             Auth pages + PKCE callback handler
-  api/              File upload, PDF generation, email, auth registration
-components/
-  layout/           Sidebar, TopBar, PageContainer
-  ui/               shadcn/ui components
-  editor/           Milkdown Crepe rich text editor
-  tasks/            Task list, detail, and status components
-  time/             Time tracking + FullCalendar wrapper
-  invoices/         Invoice builder + PDF renderer
-  portal/           Portal-specific components
-lib/
-  supabase/         Browser, server, admin, and middleware clients
-  utils.ts          cn() and shared utilities
-supabase/
-  migrations/       SQL migrations (schema, RLS, SECURITY DEFINER functions)
-docs/               Schema reference, Supabase patterns, component patterns
-```
-
-## Local Development
+## Development
 
 ### Prerequisites
 
 - Node.js 20+
-- A [Supabase](https://supabase.com) project
-- A [Cloudflare R2](https://developers.cloudflare.com/r2/) bucket (public access enabled)
-- A [Resend](https://resend.com) account with a verified sending domain
+- Access to the Supabase project (contact the project owner)
+- `.env.local` with credentials (see `.env.example`)
 
-### 1. Clone the repository
+See **[docs/local-dev-setup.md](docs/local-dev-setup.md)** for the full setup guide (credentials, migrations, test setup, common gotchas).
+
+Quick start:
 
 ```bash
 git clone https://github.com/macwilling/TaskFlow.git
 cd TaskFlow
-```
-
-### 2. Install dependencies
-
-```bash
 npm install
-```
-
-### 3. Configure environment variables
-
-```bash
-cp .env.example .env.local
-```
-
-| Variable | Description |
-|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key (safe to expose) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key — **server-side only, never expose** |
-| `R2_ACCOUNT_ID` | Cloudflare account ID |
-| `R2_ACCESS_KEY_ID` | R2 API token access key |
-| `R2_SECRET_ACCESS_KEY` | R2 API token secret |
-| `R2_BUCKET_NAME` | R2 bucket name (e.g. `taskflow-files`) |
-| `R2_PUBLIC_URL` | Public base URL for your R2 bucket (e.g. `https://files.yourdomain.com`) |
-| `RESEND_API_KEY` | Resend API key (Send access only) |
-| `NEXT_PUBLIC_APP_URL` | App URL (e.g. `http://localhost:3000` for local dev) |
-| `NEXT_PUBLIC_BASE_DOMAIN` | Root domain without leading dot (e.g. `billabledesk.com`) |
-| `ALLOW_REGISTRATION` | Set to `"true"` to enable new tenant sign-up |
-
-### 4. Run database migrations
-
-Apply the migrations in `supabase/migrations/` to your Supabase project in order. You can do this via the Supabase CLI or by pasting each file into the SQL editor.
-
-The initial migration (`20260303000000_initial_schema.sql`) creates the `profiles` table and the `auth_tenant_id()` / `auth_role()` SECURITY DEFINER functions that all RLS policies depend on — it must run first.
-
-### 5. Enable auth providers
-
-In the Supabase dashboard under **Authentication → Providers**, enable the methods you want:
-- Email (for email/password and magic link)
-- Google (requires a Google Cloud OAuth app)
-
-### 6. Set up Cloudflare R2
-
-1. Create a bucket and enable public access
-2. Optionally configure a custom domain for the bucket
-3. Create an R2 API token with **Object Read & Write** permissions
-4. Add a CORS policy allowing `POST` from your app's origin
-
-### 7. Start the development server
-
-```bash
+cp .env.example .env.local  # fill in credentials
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Register a new account (requires `ALLOW_REGISTRATION=true`).
-
-## Available Scripts
+### Commands
 
 ```bash
-npm run dev        # Start development server
+npm run dev        # Development server
 npm run build      # Production build + TypeScript type-check
 npm run lint       # ESLint
-npm run start      # Serve production build
 npm run test       # All tests (unit + integration)
 npm run test:unit  # Vitest unit/integration tests
-npm run test:e2e   # Playwright E2E tests (requires dev server running)
+npm run test:e2e   # Playwright E2E (requires dev server running)
 ```
 
-## Deployment
+### Key docs
 
-The app is deployed on Vercel. Set all environment variables under **Project → Settings → Environment Variables**.
+| File | Contents |
+|---|---|
+| `docs/local-dev-setup.md` | Full setup guide — credentials, migrations, tests, gotchas |
+| `CLAUDE.md` | Architecture, workflow rules, testing conventions |
+| `docs/schema-reference.md` | All tables, columns, RLS, migration history |
+| `docs/supabase-patterns.md` | Query patterns, RLS templates, atomic counters |
+| `docs/component-patterns.md` | SC/CC decision, server actions, Milkdown, FullCalendar |
+| `plan.md` | Full technical plan and phase breakdown |
 
-DNS is managed on Cloudflare with a grey-cloud (DNS-only) CNAME pointing to Vercel.
-
-## Secrets
-
-- `.env.local` is in `.gitignore` — it will never be committed
-- `.env.example` contains only placeholder values
-- `SUPABASE_SERVICE_ROLE_KEY`, R2 credentials, and `RESEND_API_KEY` are **server-side only** and must never appear in client-side code or `NEXT_PUBLIC_*` variables
+---
 
 ## Implementation Status
 
 | Phase | Description | Status |
 |---|---|---|
-| 0 | Project bootstrap | ✅ Done |
-| 1a | Auth: email/password | ✅ Done |
-| 1b | Auth: magic link | ✅ Done |
-| 1c | Auth: Google OAuth | ✅ Done |
-| 2 | Client management | ✅ Done |
-| 3 | Task management + Milkdown editor + R2 uploads | ✅ Done |
-| 4 | Time tracking + FullCalendar | ✅ Done |
-| 5 | Invoicing + React-PDF | ✅ Done |
-| 6a | Client portal | ✅ Done |
-| 6b | Portal: magic link auth | ✅ Done |
-| 6c | Portal: Google OAuth | ✅ Done |
-| 7 | Settings + reports | ✅ Done |
+| 0 | Project bootstrap | ✅ |
+| 1a–1c | Auth (email/password, magic link, Google OAuth) | ✅ |
+| 2 | Client management | ✅ |
+| 3 | Task management + Milkdown editor + R2 uploads | ✅ |
+| 4 | Time tracking + FullCalendar | ✅ |
+| 5 | Invoicing + React-PDF | ✅ |
+| 6a–6c | Client portal (task view, magic link, Google OAuth) | ✅ |
+| 7 | Settings + reports | ✅ |
 | 8 | Polish + hardening | 🔄 In progress |

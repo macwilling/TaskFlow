@@ -147,6 +147,7 @@ Read these when working on the relevant area — don't load all of them upfront.
 
 | File | Read when… |
 |---|---|
+| `docs/local-dev-setup.md` | Onboarding a new contributor or troubleshooting the dev environment |
 | `docs/schema-reference.md` | You need table columns, FK relationships, RLS summary, or migration history |
 | `docs/supabase-patterns.md` | Writing queries, RLS policies, migrations, or using atomic counters |
 | `docs/component-patterns.md` | Building UI — SC/CC decision, server actions, Milkdown, FullCalendar, R2 upload, shadcn list |
