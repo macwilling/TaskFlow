@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -8,12 +8,14 @@ import {
   KeyboardSensor,
   useSensor,
   useSensors,
-  closestCorners,
+  pointerWithin,
+  rectIntersection,
   defaultDropAnimationSideEffects,
   type DragStartEvent,
   type DragOverEvent,
   type DragEndEvent,
   type DropAnimation,
+  type CollisionDetection,
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { updateTaskStatusAction } from "@/app/actions/tasks";
@@ -44,6 +46,19 @@ export function TaskBoardView({
   }, [initialTasks]);
 
   const columnIds = statuses.map((s) => s.id);
+
+  // pointerWithin is more reliable than closestCorners for horizontal Kanban layouts:
+  // it checks if the pointer is physically inside a droppable's bounds rather than
+  // measuring corner distances, which breaks down when there are 3+ columns or empty columns.
+  const collisionDetection: CollisionDetection = useCallback(
+    (args) => {
+      const pointerCollisions = pointerWithin(args);
+      if (pointerCollisions.length > 0) return pointerCollisions;
+      // Fallback for gaps between columns
+      return rectIntersection(args);
+    },
+    []
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -154,7 +169,7 @@ export function TaskBoardView({
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCorners}
+      collisionDetection={collisionDetection}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
