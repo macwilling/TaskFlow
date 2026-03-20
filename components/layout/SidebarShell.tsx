@@ -15,7 +15,7 @@ export function SidebarShell({ sidebar, userMenu, children }: SidebarShellProps)
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-screen">
       <NavigationProgress />
 
       {/* Mobile backdrop */}
@@ -51,7 +51,7 @@ export function SidebarShell({ sidebar, userMenu, children }: SidebarShellProps)
       </button>
 
       {/* Main content */}
-      <div className="flex flex-1 flex-col pl-0 md:pl-56">{children}</div>
+      <div className="flex flex-1 flex-col overflow-x-hidden overflow-y-auto pl-0 md:pl-56">{children}</div>
     </div>
   );
 }
