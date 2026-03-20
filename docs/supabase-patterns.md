@@ -122,31 +122,30 @@ Only ever call this from server-side code (Route Handlers, Server Actions).
 
 ## Invoice number incrementing (atomic)
 
-`tenant_settings.invoice_number_next` must be read and incremented atomically to avoid duplicate invoice numbers across concurrent requests. Use a Postgres function:
+`tenant_settings.invoice_number_next` must be read and incremented atomically. Use the `claim_invoice_number` SECURITY DEFINER function (defined in initial schema):
 
-```sql
-CREATE OR REPLACE FUNCTION claim_invoice_number(p_tenant_id UUID)
-RETURNS TEXT LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-  v_prefix TEXT;
-  v_next INT;
-BEGIN
-  SELECT invoice_number_prefix, invoice_number_next
-    INTO v_prefix, v_next
-    FROM tenant_settings
-   WHERE tenant_id = p_tenant_id
-     FOR UPDATE;  -- row lock
-
-  UPDATE tenant_settings
-     SET invoice_number_next = invoice_number_next + 1
-   WHERE tenant_id = p_tenant_id;
-
-  RETURN v_prefix || v_next::TEXT;
-END;
-$$;
+```ts
+// Call via service role to bypass RLS
+const { data } = await adminClient.rpc('claim_invoice_number', { p_tenant_id });
 ```
 
-Call via service role: `adminClient.rpc('claim_invoice_number', { p_tenant_id })`.
+---
+
+## Task number incrementing (atomic)
+
+`clients.next_task_number` is incremented atomically for human-readable Jira-style keys (e.g. `AC-1`).
+
+`client_key` is the short uppercase prefix set per client (e.g. `"AC"`). The full display key is `${client.client_key}-${task.task_number}`.
+
+```ts
+// Allocate next number — call via service role
+const { data: taskNumber } = await adminClient.rpc('next_task_number_for_client', {
+  p_client_id: clientId,
+});
+// Then insert task with task_number: taskNumber
+```
+
+When displaying a task key: `client_key` and `task_number` must both be non-null (old tasks may have `task_number = null` if created before migration 000005).
 
 ---
 
@@ -171,3 +170,18 @@ function effectiveStatus(invoice: { status: string; due_date: string | null }) {
   return invoice.status;
 }
 ```
+
+---
+
+## Task statuses
+
+Statuses are per-tenant rows in `task_statuses`, not a hardcoded enum. Tasks have `status_id UUID FK task_statuses` (NOT a `status TEXT` column — that was removed in migration 000015).
+
+When fetching tasks, join `task_statuses` to get name/color:
+```ts
+const { data } = await supabase
+  .from("tasks")
+  .select("*, task_statuses(id, name, color, is_closed)")
+```
+
+Each tenant has exactly one `is_default` status (for new tasks) and one `is_closed` status (for `closed_at` timestamping). Seeded automatically on tenant creation via trigger.
