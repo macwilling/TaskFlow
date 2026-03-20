@@ -162,6 +162,62 @@ For FullCalendar specifically, also call `calendarRef.current?.getApi().refetchE
 
 ---
 
+## Milkdown Crepe editor
+
+`components/editor/MilkdownEditor.tsx` — always dynamically imported with `ssr: false` (via a `"use client"` wrapper):
+
+```ts
+const MilkdownEditor = dynamic(() => import("@/components/editor/MilkdownEditor"), { ssr: false });
+```
+
+Uses **`@milkdown/crepe`** (not the lower-level `@milkdown/core` / `@milkdown/react` API). Crepe is the all-in-one editor with slash commands (`/`), floating formatting toolbar, image blocks, and link tooltips built in.
+
+**Implementation details:**
+- Uses `useEffect` + `useRef` to create/destroy the `Crepe` instance imperatively
+- Image upload: `featureConfigs[Crepe.Feature.ImageBlock].onUpload` — calls `POST /api/upload` and returns the public URL
+- `readOnly` changes applied via a separate `useEffect` that calls `crepe.setReadonly()`
+- CSS imported in `globals.css`: `@import "@milkdown/crepe/theme/common/style.css"` + `frame.css` at the top, before `@tailwind`
+- Crepe color tokens overridden in `globals.css` under `.milkdown { --crepe-color-* }` — dark mode adapts automatically via `.dark { }` Tailwind vars
+
+---
+
+## FullCalendar
+
+`components/time/TimeCalendar.tsx` — always dynamically imported via a `"use client"` wrapper (see pattern above).
+
+**Event fetching:** FullCalendar's `events` callback prop calls `GET /api/time-entries?start=...&end=...`. Also supports `?client=<id>&billed=false&billable=true` (no date range) — returns raw entry objects for invoice builder.
+
+**Drag-drop:** calls `updateTimeEntryDateAction` server action. After: `calendarRef.current?.getApi().refetchEvents()`.
+
+**Import sources:**
+- `EventDropArg` — from `@fullcalendar/core` (NOT `@fullcalendar/interaction`)
+- `DateClickArg` — from `@fullcalendar/interaction`
+
+---
+
+## File uploads (Cloudflare R2)
+
+`POST /api/upload?path=<r2-prefix>` with `multipart/form-data`. Returns `{ url, key }`.
+
+Path convention:
+- `tenant-{tenantId}/tasks/{taskId}/inline` — editor inline images
+- `tenant-{tenantId}/tasks/{taskId}/attachments` — file attachments
+
+**R2 gotcha:** requires `requestChecksumCalculation: "WHEN_REQUIRED"` on the S3Client. AWS SDK v3 sends CRC32 checksums by default which R2 rejects.
+
+---
+
+## Email
+
+API routes in `app/api/email/`:
+- `task-closed` — triggered from `closeTaskAction` (fire-and-forget, non-blocking)
+- `comment` — triggered from comment server action
+- `invoice` — triggered when invoice is sent
+
+All use Resend and log to the `email_log` table. Pattern: call the route in a fire-and-forget `fetch()` from the server action — do not `await`.
+
+---
+
 ## TopBar — breadcrumbs (preferred for detail/edit pages)
 
 Use `breadcrumbs` instead of `title`/`description` on any page that sits below a list page. The last breadcrumb is the current page (non-linked, bold); earlier ones are links.
@@ -242,16 +298,18 @@ Without `<Suspense>`, Next.js will throw at build time.
 
 ## shadcn/ui components installed
 
-| Component | Package |
+| Component | Notes |
 |---|---|
+| Alert | built-in |
+| Badge | built-in |
 | Button | built-in |
+| Checkbox | `npx shadcn@latest add checkbox` |
+| Dialog | `@radix-ui/react-dialog` |
+| Dropdown Menu | `@radix-ui/react-dropdown-menu` |
 | Input | built-in |
 | Label | `@radix-ui/react-label` |
 | Select | `@radix-ui/react-select` |
-| Textarea | built-in |
-| Dialog | `@radix-ui/react-dialog` |
-| Alert | built-in |
-| Badge | built-in |
 | Separator | `@radix-ui/react-separator` |
+| Textarea | built-in |
 
 To add more shadcn components: `npx shadcn@latest add [component]`. Do not manually create component files in `components/ui/` — use the CLI.

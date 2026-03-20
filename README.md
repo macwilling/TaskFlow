@@ -8,9 +8,11 @@ Built with Next.js 16 App Router, Supabase, and a fully type-safe stack. Each te
 
 ### Client & Task Management
 - **Client workspace** — manage clients with color coding, contact info, and per-client task lists
-- **Task management** — Jira-style scoped task keys (`PROJ-1`, `PROJ-2`), status workflow, and full rich-text descriptions
-- **Milkdown Crepe editor** — WYSIWYG markdown editor with slash commands (`/`), floating toolbar, inline image upload to R2, and file attachments
-- **Inline time entry editing** — edit log entries directly on the task detail page without leaving context
+- **Task management** — Jira-style scoped task keys (`PROJ-1`, `PROJ-2`), full rich-text descriptions, file attachments, and inline time entry editing
+- **Custom task statuses** — per-tenant configurable statuses with custom colors and ordering; one marked as default, one as closed
+- **Kanban board** — drag-and-drop card view across all statuses; horizontal scroll with sticky column headers
+- **Task audit log** — immutable history of status changes, title edits, and content changes with actor and timestamp
+- **Milkdown Crepe editor** — WYSIWYG markdown with slash commands (`/`), floating toolbar, inline image upload to R2
 
 ### Time Tracking
 - **FullCalendar view** — monthly/weekly calendar of all logged time entries
@@ -22,6 +24,19 @@ Built with Next.js 16 App Router, Supabase, and a fully type-safe stack. Each te
 - **PDF generation** — server-rendered PDF via `@react-pdf/renderer`, streamed on demand (no caching)
 - **Status lifecycle** — draft → sent → viewed → paid; overdue computed dynamically
 - **Atomic invoice numbers** — `claim_invoice_number()` Postgres function prevents race conditions
+
+### Client Portal
+- **Portal auth** — clients sign in via magic link or Google OAuth; matched to their client record by email
+- **Task visibility** — clients see their own tasks and can submit new requests
+- **Invoice visibility** — clients see sent/viewed/paid invoices and line item breakdowns (drafts hidden)
+- **Comments** — clients can add, edit, and delete their own comments on tasks
+
+### Settings & Reports
+- **Business settings** — name, logo, address, contact info
+- **Branding** — primary/accent color with live preview
+- **Invoice settings** — number prefix, default tax rate, payment terms, payment method options
+- **Email templates** — customisable subject + body for task-closed, invoice, and comment emails; custom SMTP option
+- **Reports** — revenue and time summaries by client and date range
 
 ### Auth & Multi-tenancy
 - **Three auth methods** — email/password, magic link, Google OAuth
@@ -124,6 +139,7 @@ cp .env.example .env.local
 | `R2_PUBLIC_URL` | Public base URL for your R2 bucket (e.g. `https://files.yourdomain.com`) |
 | `RESEND_API_KEY` | Resend API key (Send access only) |
 | `NEXT_PUBLIC_APP_URL` | App URL (e.g. `http://localhost:3000` for local dev) |
+| `NEXT_PUBLIC_BASE_DOMAIN` | Root domain without leading dot (e.g. `billabledesk.com`) |
 | `ALLOW_REGISTRATION` | Set to `"true"` to enable new tenant sign-up |
 
 ### 4. Run database migrations
@@ -193,4 +209,4 @@ DNS is managed on Cloudflare with a grey-cloud (DNS-only) CNAME pointing to Verc
 | 6b | Portal: magic link auth | ✅ Done |
 | 6c | Portal: Google OAuth | ✅ Done |
 | 7 | Settings + reports | ✅ Done |
-| 8 | Polish + hardening | ✅ Done |
+| 8 | Polish + hardening | 🔄 In progress |
