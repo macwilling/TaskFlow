@@ -14,7 +14,7 @@ export default async function TasksPage() {
     supabase
       .from("tasks")
       .select(
-        "id, task_number, title, status_id, priority, due_date, created_at, task_statuses(id, name, color, is_closed), clients(name, color, client_key)"
+        "id, client_id, task_number, title, status_id, priority, due_date, created_at, task_statuses(id, name, color, is_closed), clients(name, color, client_key)"
       )
       .order("created_at", { ascending: false }),
     supabase
