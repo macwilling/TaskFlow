@@ -136,6 +136,81 @@ export async function updateTaskTitleAction(
   return {};
 }
 
+// ─── Update a single scalar field ────────────────────────────────────────────
+
+export async function updateTaskFieldAction(
+  taskId: string,
+  field: "priority" | "due_date" | "estimated_hours",
+  value: string | null
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user || user.app_metadata?.role !== "admin") {
+    return { error: "Unauthorized." };
+  }
+
+  let update: Record<string, unknown>;
+  if (field === "estimated_hours") {
+    update = { estimated_hours: value ? parseFloat(value) : null };
+  } else {
+    update = { [field]: value || null };
+  }
+
+  const { error } = await supabase.from("tasks").update(update).eq("id", taskId);
+  if (error) return { error: error.message };
+
+  const slug = await getTaskSlug(supabase, taskId);
+  revalidatePath(`/app/tasks/${slug}`);
+  revalidatePath("/app/tasks");
+  return {};
+}
+
+// ─── Reassign task to a different client ─────────────────────────────────────
+
+export async function reassignTaskClientAction(
+  taskId: string,
+  newClientId: string
+): Promise<{ error?: string; newSlug?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user || user.app_metadata?.role !== "admin") {
+    return { error: "Unauthorized." };
+  }
+
+  // Claim a new task number for the new client to avoid the unique constraint
+  // on (client_id, task_number).
+  const { data: newTaskNumber, error: numError } = await supabase
+    .rpc("next_task_number_for_client", { p_client_id: newClientId });
+
+  if (numError) return { error: numError.message };
+
+  // Delete comments left by portal (client) users — they belong to the old
+  // client relationship and should not carry over.
+  await supabase
+    .from("comments")
+    .delete()
+    .eq("task_id", taskId)
+    .eq("author_role", "client");
+
+  const { error } = await supabase
+    .from("tasks")
+    .update({ client_id: newClientId, task_number: newTaskNumber })
+    .eq("id", taskId);
+
+  if (error) return { error: error.message };
+
+  const newSlug = await getTaskSlug(supabase, taskId);
+  revalidatePath(`/app/tasks/${newSlug}`);
+  revalidatePath("/app/tasks");
+  return { newSlug };
+}
+
 // ─── Update metadata ──────────────────────────────────────────────────────────
 
 export async function updateTaskMetaAction(
