@@ -6,8 +6,9 @@ import { TopBar } from "@/components/layout/TopBar";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Separator } from "@/components/ui/separator";
 import { TaskStatusControl } from "@/components/tasks/TaskStatusControl";
-import { TaskPriorityBadge } from "@/components/tasks/TaskStatusBadge";
 import { TaskEditors } from "@/components/tasks/TaskEditors";
+import { PriorityEditor, DueDateEditor, EstHoursEditor, ClientEditor } from "@/components/tasks/TaskSidebarMeta";
+import type { ClientOption } from "@/components/tasks/TaskSidebarMeta";
 import { TaskTitleEditor } from "@/components/tasks/TaskTitleEditor";
 import { DeleteTaskButton } from "@/components/tasks/DeleteTaskButton";
 import { AttachmentsList } from "@/components/tasks/AttachmentsList";
@@ -137,13 +138,30 @@ async function CommentsPanel({
 
 async function AuditLogPanel({ taskId }: { taskId: string }) {
   const supabase = await createClient();
-  const { data: entries } = await supabase
+  const { data: rawEntries } = await supabase
     .from("task_audit_log")
-    .select("id, actor_role, event_type, old_value, new_value, metadata, created_at")
+    .select("id, actor_id, actor_role, event_type, old_value, new_value, metadata, created_at")
     .eq("task_id", taskId)
     .order("created_at", { ascending: false });
 
-  return <TaskAuditLog entries={(entries ?? []) as AuditEntry[]} />;
+  const actorIds = [...new Set((rawEntries ?? []).map((e) => e.actor_id).filter(Boolean))];
+  let actorNames: Record<string, string> = {};
+  if (actorIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, full_name")
+      .in("id", actorIds as string[]);
+    actorNames = Object.fromEntries(
+      (profiles ?? []).map((p) => [p.id, p.full_name ?? ""])
+    );
+  }
+
+  const entries: AuditEntry[] = (rawEntries ?? []).map((e) => ({
+    ...e,
+    actor_name: e.actor_id ? (actorNames[e.actor_id] ?? null) : null,
+  }));
+
+  return <TaskAuditLog entries={entries} />;
 }
 
 // ─── Skeleton fallbacks ────────────────────────────────────────────────────────
@@ -236,7 +254,7 @@ export default async function TaskDetailPage({
   if (!clientRow) notFound();
 
   // Task query needs clientRow.id; profile query needs user.id — both ready now.
-  const [{ data: task, error }, { data: profile }, { data: statuses }] = await Promise.all([
+  const [{ data: task, error }, { data: profile }, { data: statuses }, { data: allClients }] = await Promise.all([
     supabase
       .from("tasks")
       .select("*, task_statuses(id, name, color, is_closed), clients(id, name, color, client_key, tenant_id, tenants(id))")
@@ -248,6 +266,11 @@ export default async function TaskDetailPage({
       .from("task_statuses")
       .select("id, tenant_id, name, color, position, is_default, is_closed, created_at")
       .order("position", { ascending: true }),
+    supabase
+      .from("clients")
+      .select("id, name, color, client_key")
+      .eq("is_archived", false)
+      .order("name"),
   ]);
 
   if (error || !task) notFound();
@@ -349,7 +372,7 @@ export default async function TaskDetailPage({
                 <div className="flex items-center gap-3">
                   <dt className="w-20 shrink-0 text-muted-foreground">Priority</dt>
                   <dd>
-                    <TaskPriorityBadge priority={task.priority} />
+                    <PriorityEditor taskId={taskId} priority={task.priority} disabled={isClosed} />
                   </dd>
                 </div>
               </dl>
@@ -371,20 +394,17 @@ export default async function TaskDetailPage({
                 </div>
                 <div className="flex gap-3">
                   <dt className="w-20 shrink-0 text-muted-foreground">Client</dt>
-                  <dd className="flex items-center gap-1.5">
+                  <dd>
                     {client && (
-                      <>
-                        <span
-                          className="h-2 w-2 shrink-0 rounded-full"
-                          style={{ backgroundColor: client.color ?? "#0969da" }}
-                        />
-                        <Link
-                          href={`/app/clients/${client.client_key ?? client.id}`}
-                          className="hover:underline text-foreground"
-                        >
-                          {client.name}
-                        </Link>
-                      </>
+                      <ClientEditor
+                        taskId={taskId}
+                        clientId={client.id}
+                        clientName={client.name}
+                        clientColor={client.color}
+                        clientKey={client.client_key}
+                        clients={(allClients ?? []) as ClientOption[]}
+                        disabled={isClosed}
+                      />
                     )}
                   </dd>
                 </div>
@@ -411,14 +431,23 @@ export default async function TaskDetailPage({
               <dl className="space-y-2">
                 <div className="flex gap-3">
                   <dt className="w-20 shrink-0 text-muted-foreground">Due date</dt>
-                  <dd className={isOverdue ? "text-red-600 dark:text-red-400 font-medium" : "text-foreground"}>
-                    {formatDate(task.due_date)}
+                  <dd>
+                    <DueDateEditor
+                      taskId={taskId}
+                      dueDate={task.due_date ?? null}
+                      isOverdue={!!isOverdue}
+                      disabled={isClosed}
+                    />
                   </dd>
                 </div>
                 <div className="flex gap-3">
                   <dt className="w-20 shrink-0 text-muted-foreground">Est. hours</dt>
-                  <dd className="text-foreground">
-                    {task.estimated_hours != null ? `${task.estimated_hours}h` : "—"}
+                  <dd>
+                    <EstHoursEditor
+                      taskId={taskId}
+                      estimatedHours={task.estimated_hours ?? null}
+                      disabled={isClosed}
+                    />
                   </dd>
                 </div>
               </dl>

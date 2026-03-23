@@ -16,6 +16,7 @@ import {
 export interface AuditEntry {
   id: string;
   actor_role: string | null;
+  actor_name: string | null;
   event_type: string;
   old_value: string | null;
   new_value: string | null;
@@ -38,9 +39,8 @@ function formatTimestamp(iso: string) {
   });
 }
 
-function actorLabel(role: string | null) {
-  if (role === "admin") return "Consultant";
-  if (role === "client") return "Client";
+function actorLabel(role: string | null, name: string | null) {
+  if (name) return name;
   return "System";
 }
 
@@ -69,7 +69,7 @@ function EntryIcon({ eventType }: { eventType: string }) {
 }
 
 function entryDescription(entry: AuditEntry): string {
-  const actor = actorLabel(entry.actor_role);
+  const actor = actorLabel(entry.actor_role, entry.actor_name);
   switch (entry.event_type) {
     case "created":
       return `${actor} created this task`;
