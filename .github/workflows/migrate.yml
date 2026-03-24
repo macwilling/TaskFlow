@@ -1,0 +1,24 @@
+name: Apply migrations
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [dev, main]
+    paths:
+      - 'supabase/migrations/**'
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Apply migrations
+        run: supabase db push --db-url "$DB_URL"
+        env:
+          DB_URL: ${{ github.ref == 'refs/heads/main' && secrets.PROD_DB_URL || secrets.STAGING_DB_URL }}
