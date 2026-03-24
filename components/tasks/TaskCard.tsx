@@ -9,6 +9,7 @@ export type { TaskStatusShape };
 
 export interface Task {
   id: string;
+  client_id: string | null;
   task_number: number | null;
   title: string;
   status_id: string;

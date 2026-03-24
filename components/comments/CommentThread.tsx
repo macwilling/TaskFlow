@@ -86,12 +86,12 @@ function CommentRow({
         className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold uppercase text-white"
         style={{ backgroundColor: comment.author_role === "admin" ? "#0969da" : "#6e40c9" }}
       >
-        {comment.author_name.charAt(0) || (comment.author_role === "admin" ? "A" : "C")}
+        {comment.author_name.charAt(0) || "?"}
       </div>
       <div className="flex-1 space-y-1">
         <div className="flex items-baseline gap-2">
           <span className="text-xs font-medium text-foreground">
-            {comment.author_name || comment.author_role}
+            {comment.author_name || "Unknown"}
           </span>
           <span className="text-xs text-muted-foreground">
             {formatDate(comment.created_at)}

@@ -60,27 +60,37 @@ export default async function PortalTaskPage({
     // Fetch audit log
     db
       .from("task_audit_log")
-      .select("id, actor_role, event_type, old_value, new_value, metadata, created_at")
+      .select("id, actor_id, actor_role, event_type, old_value, new_value, metadata, created_at")
       .eq("task_id", taskId)
       .order("created_at", { ascending: false }),
   ]);
 
   if (error || !task) notFound();
 
-  const authorIds = [...new Set((comments ?? []).map((c) => c.author_id))];
-  let authorNames: Record<string, string> = {};
-  if (authorIds.length > 0) {
+  // Collect all unique profile IDs needed (comment authors + audit log actors)
+  const commentAuthorIds = [...new Set((comments ?? []).map((c) => c.author_id))];
+  const auditActorIds = [...new Set((auditEntries ?? []).map((e) => e.actor_id).filter(Boolean) as string[])];
+  const allProfileIds = [...new Set([...commentAuthorIds, ...auditActorIds])];
+
+  let profileNames: Record<string, string> = {};
+  if (allProfileIds.length > 0) {
     const { data: profiles } = await db
       .from("profiles")
       .select("id, full_name")
-      .in("id", authorIds);
-    authorNames = Object.fromEntries(
+      .in("id", allProfileIds);
+    profileNames = Object.fromEntries(
       (profiles ?? []).map((p) => [p.id, p.full_name ?? ""])
     );
   }
+
   const commentsWithNames = (comments ?? []).map((c) => ({
     ...c,
-    author_name: authorNames[c.author_id] ?? "",
+    author_name: profileNames[c.author_id] ?? "",
+  }));
+
+  const enrichedAuditEntries: AuditEntry[] = (auditEntries ?? []).map((e) => ({
+    ...e,
+    actor_name: e.actor_id ? (profileNames[e.actor_id] ?? null) : null,
   }));
 
   // In impersonation mode, verify the task belongs to the impersonated client
@@ -181,7 +191,7 @@ export default async function PortalTaskPage({
         <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Activity
         </h2>
-        <TaskAuditLog entries={(auditEntries ?? []) as AuditEntry[]} />
+        <TaskAuditLog entries={enrichedAuditEntries} />
       </div>
     </div>
   );

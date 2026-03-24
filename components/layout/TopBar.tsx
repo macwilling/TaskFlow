@@ -16,7 +16,7 @@ interface TopBarProps {
 
 export function TopBar({ title, description, breadcrumbs, actions }: TopBarProps) {
   return (
-    <div className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-border bg-background px-6 pl-14 md:pl-6">
+    <div className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-border bg-background px-6 pl-14 md:pl-6">
       <div className="flex flex-col justify-center min-w-0">
         {breadcrumbs && breadcrumbs.length > 0 ? (
           <nav className="flex items-center gap-1 text-sm" aria-label="Breadcrumb">
